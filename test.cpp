@@ -18,7 +18,7 @@ int main (int argc, char const *argv[])
   CombProcess p(dbg);
   
   p.set_callback(callback);
-  p.set_secs(2);
+  p.set_secs(0);
   p.set_micro(2);
   
   const char* env[] = { "NAME=bob", NULL };

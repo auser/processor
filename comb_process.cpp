@@ -17,6 +17,7 @@
 
 extern int dbg;
 int gbl_child_pid;
+char *gbl_pidfile;
 callback_t gbl_callback;
 
 // Signal handlers
@@ -28,7 +29,9 @@ void gotsignal(int sig)
     case SIGTERM:
     case SIGINT:
     if (gbl_callback != NULL) gbl_callback((int)gbl_child_pid);
-    if (!kill(gbl_child_pid, sig)) _exit(0);
+    kill(gbl_child_pid, sig);
+    unlink(gbl_pidfile); // Cleanup the pidfile
+    _exit(0);
     break;
     case SIGHUP:
     _exit(0);
@@ -127,6 +130,13 @@ int CombProcess::monitored_start(pid_t p_pid)
   unsigned long tsecs = time(NULL);
   
   if (m_pidfile[0] == 0) sprintf(m_pidfile, "%s/%d%lu.pid", PID_ROOT, (unsigned int)m_parent_pid, tsecs);
+  
+  // Copy to the global pid file for safe-keeping
+  gbl_pidfile = (char *)malloc(sizeof(char) * strlen(m_pidfile));
+  memset(gbl_pidfile, 0, sizeof(char) * strlen(m_pidfile)); 
+  strncpy(gbl_pidfile, m_pidfile, strlen(m_pidfile));
+  
+  
   mkdir_p(dirname(m_pidfile));
   
   // detach from the main process
@@ -150,6 +160,7 @@ int CombProcess::monitored_start(pid_t p_pid)
         debug(m_dbg, 1, "CombProcess %s died\n", m_name);
         if (m_callback != NULL) {
           m_callback((int)m_parent_pid);
+          unlink(gbl_pidfile);
           exit(0);
         } else {
           m_process_pid = start_process(m_parent_pid);
