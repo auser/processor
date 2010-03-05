@@ -60,18 +60,19 @@ public:
   CombProcess(int dbg) {
     new (this) CombProcess;
     set_debug(dbg);
-    init();
   }
   CombProcess() : m_callback(NULL),m_sec(5),m_micro(0),m_nano(0),m_process_pid(-1),m_name(NULL),m_status(P_WAITING), m_cd(""), m_argc(0), m_cenv_c(0), m_dbg(0) {
     memset(m_pidfile, 0, LIL_BUF);
   }
   ~CombProcess() {
     debug(m_dbg, 2, "freeing CombProcess: %p\n", this);
+    unlink(m_pidfile);
   }
   
   void set_callback(callback_t f)   {m_callback = f;}
   void set_secs(unsigned long s)    {m_sec = s;}
   void set_micro(unsigned long m)   {m_micro = m;}
+  void set_nano(unsigned long n)    {m_nano = n;}
   void set_cd(std::string c)        {m_cd = c;}
   void set_debug(int d)             {m_dbg = d;}
   void set_pidfile(std::string c)   {
@@ -107,7 +108,6 @@ public:
     for (int j = 0; j < i; j++) debug(m_dbg, 2, "m_argv[%d] = %s\n", j, m_argv[j]);
   }
   
-  int init();
   int monitored_start();
   int monitored_start(pid_t p_pid);
   int monitored_start(int i, char const *argv[], char **envp);

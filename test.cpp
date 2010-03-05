@@ -18,6 +18,9 @@ int main (int argc, char const *argv[])
   CombProcess p(dbg);
   
   p.set_callback(callback);
+  p.set_secs(2);
+  p.set_micro(2);
+  
   const char* env[] = { "NAME=bob", NULL };
   
   argv++; // We don't want our program name to be included
@@ -25,5 +28,8 @@ int main (int argc, char const *argv[])
     printf("argv[%d] = %s\n", i, argv[i]);
   
   p.monitored_start(argc-1, argv, (char **) env);
+  
+  delete &p;
+  
   return 0;
 }

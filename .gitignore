@@ -1,15 +1,6 @@
-autom4te.cache/*
 c/Makefile
-erl/Makefile
-test/c/Makefile
-ebin/*.beam
-ebin/*.boot
-ebin/*.rel
-ebin/*.script
-priv/*.so
 *.o
-config.log
-config.status
+*.log
 c/test_suite
 .deps
 .DS_Store

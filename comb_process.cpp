@@ -17,6 +17,7 @@
 
 extern int dbg;
 int gbl_child_pid;
+callback_t gbl_callback;
 
 // Signal handlers
 // We've received a signal to process
@@ -25,9 +26,9 @@ void gotsignal(int sig)
   debug(dbg, 1, "got signal: %d\n", sig);
   switch (sig) {
     case SIGTERM:
-    case SIGINT:    
-    if (!kill(gbl_child_pid, sig))
-      _exit(0);
+    case SIGINT:
+    if (gbl_callback != NULL) gbl_callback((int)gbl_child_pid);
+    if (!kill(gbl_child_pid, sig)) _exit(0);
     break;
     case SIGHUP:
     _exit(0);
@@ -57,12 +58,6 @@ void gotsigchild(int signal, siginfo_t* si, void* context)
   process_child_signal(si->si_pid);
 }
 /***** Comb process *****/
-int CombProcess::init()
-{
-  debug(m_dbg, 2, "initializing CombProcess: %p\n", this);
-  return 0;
-}
-
 /**
 * Handle the signals to this process
 *
@@ -206,6 +201,7 @@ int CombProcess::start_process(pid_t parent_pid)
       break;
   }
   gbl_child_pid = child_pid;
+  gbl_callback = m_callback;
   debug(m_dbg, 1, "Child pid %d\n", (int)child_pid);
   return child_pid;
 }
