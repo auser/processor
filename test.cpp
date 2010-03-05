@@ -28,9 +28,9 @@ int main (int argc, char const *argv[])
   for(int i = 0; i < argc; i++)
     printf("argv[%d] = %s\n", i, argv[i]);
   
-  p.monitored_start(argc-1, argv, (char **) env);
+  pid_t pid = p.monitored_start(argc-1, argv, (char **) env);
   
-  delete &p;
+  printf("monitored_start pid: %d\n", (int)pid);
   
   return 0;
 }
