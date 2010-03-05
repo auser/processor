@@ -17,6 +17,7 @@ int main (int argc, char const *argv[])
   dbg = 4;
   CombProcess p(dbg);
   
+  // p.set_cd("/tmp/beehive/pid");
   p.set_callback(callback);
   p.set_secs(0);
   p.set_micro(2);

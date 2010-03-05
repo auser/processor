@@ -45,7 +45,7 @@ private:
   char*           m_name;                             // The name of the process
   process_status  m_status;                           // Status of the process
   char            m_pidfile[LIL_BUF];                 // Pidfile name
-  char*           m_cd;                               // Working directory
+  char            m_cd[BIG_BUF];                      // Working directory
   char            m_input[BIG_BUF];                   // Input line
   int             m_argc;                             // Number of arguments
   char**          m_argv;                             // A string list of the arguments
@@ -63,6 +63,8 @@ public:
   }
   CombProcess() : m_callback(NULL),m_sec(5),m_micro(0),m_nano(0),m_process_pid(-1),m_name(NULL),m_status(P_WAITING), m_argc(0), m_cenv_c(0), m_dbg(0) {
     memset(m_pidfile, 0, LIL_BUF);
+    memset(m_cd, 0, BIG_BUF);
+    memset(m_input, 0, BIG_BUF);
   }
   ~CombProcess() {
     debug(m_dbg, 2, "freeing CombProcess: %p\n", this);
@@ -78,14 +80,15 @@ public:
   void set_secs(unsigned long s)    {m_sec = s;}
   void set_micro(unsigned long m)   {m_micro = m;}
   void set_nano(unsigned long n)    {m_nano = n;}
-  void set_cd(char* c)              {
-    m_cd = (char *)malloc(sizeof(char) * strlen(c));
-    memset(m_cd, 0, sizeof(char) * strlen(c)); strncpy(m_cd, c, strlen(c));
+  void set_cd(const char* c)              {
+    // m_cd = (char *)malloc(sizeof(char) * strlen(c));
+    memset(m_cd, 0, strlen(c)); 
+    strncpy(m_cd, c, strlen(c));
   }
   void set_debug(int d)             {m_dbg = d;}
-  void set_pidfile(std::string c)   {
+  void set_pidfile(const char* c)   {
     memset(m_pidfile, 0, LIL_BUF);
-    strncpy(m_pidfile, c.c_str(), c.length());
+    strncpy(m_pidfile, c, strlen(c));
   }
   void set_env(char **e)            {
     int total_len = 0, i = 0;

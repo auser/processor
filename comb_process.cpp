@@ -189,6 +189,14 @@ int CombProcess::start_process(pid_t parent_pid)
     case 0:
       // We are in the child process
       debug(m_dbg, 1, "Starting comb with the command: %s\n", m_argv[0]);
+      
+      // cd into the directory if there is one
+      if (m_cd[0] != (char)'\0') {
+        if (chdir(m_cd)) {
+          perror("chdir");
+        }
+      }
+      
       execve(m_argv[0], (char* const*)m_argv, (char* const*)m_cenv);
       
       // If execlp returns than there is some serious error !! And
