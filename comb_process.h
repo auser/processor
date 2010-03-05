@@ -67,6 +67,10 @@ public:
   ~CombProcess() {
     debug(m_dbg, 2, "freeing CombProcess: %p\n", this);
     unlink(m_pidfile);
+    free(m_pidfile);
+    free(m_name);
+    free(m_argv);
+    free(m_cenv);
   }
   
   void set_callback(callback_t f)   {m_callback = f;}
