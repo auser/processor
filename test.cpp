@@ -21,44 +21,9 @@ typedef std::map <pid_t, Bee>   MapChildrenT;
 MapChildrenT                    children;
 int                             dbg;
 char                            **command; // Ew
-struct sigaction old_action;
-struct sigaction sact, sterm;
-
-void callback(pid_t pid, int sig)
-{
-  printf("callback called %d - %i\n", pid, sig);
-  switch(sig) {
-    case SIGINT:
-      for (MapChildrenT::iterator it=children.begin(), end=children.end(); it != end; ++it) {
-        pid_t p = it->first;
-        Bee bee = it->second;
-
-        if (p == pid)
-          printf("%u DIED is at %s\n", (unsigned int) p, bee.name());
-        else
-          printf("%u is not the one that died\n", p);
-      }
-      break;
-    default:
-    printf("Received a signal...: %d\n", (int)sig);
-    break;
-  }
-  kill(pid, sig);
-}
-
-void list_processes()
-{
-  if (children.size() == 0) {
-    printf("None\n"); return;
-  }
-  printf("Pid\tName\tStatus\n-----------------------\n");
-  for(MapChildrenT::iterator it=children.begin(); it != children.end(); it++) 
-    printf("%d\t%s\t%s\n",
-      it->first, 
-      it->second.name(), 
-      it->second.status()
-    );
-}
+struct sigaction                old_action;
+struct sigaction                sact, sterm;
+pid_t                           process_pid;
 
 Bee* find_bee_by_pid(pid_t pid)
 {
@@ -69,13 +34,45 @@ Bee* find_bee_by_pid(pid_t pid)
   return NULL;
 }
 
+void list_processes()
+{
+  printf("Pid\tName\tStatus\n-----------------------\n");
+  if (children.size() == 0) {
+    return;
+  }
+  for(MapChildrenT::iterator it=children.begin(); it != children.end(); it++) 
+    printf("%d\t%s\t%s\n",
+      it->first, 
+      it->second.name(), 
+      it->second.status()
+    );
+}
+
+void callback(pid_t pid, int sig)
+{
+  printf("callback called %d - %i (in %d / %d)\n", pid, sig, (int)getpid(), process_pid);
+  list_processes();
+  Bee *bee = find_bee_by_pid(pid);
+  if (bee == NULL) return;
+  switch(sig) {
+    case SIGINT:
+    case SIGTERM:
+    bee->set_status(BEE_STOPPED);
+    break;
+    case SIGCHLD:
+    bee->set_status(BEE_KILLED);
+    break;
+    default:
+    printf("Received a signal...: %d\n", (int)sig);
+    break;
+  }
+}
+
 void terminate_by_pid(pid_t p)
 {
   Bee *b;
-  if ((b = find_bee_by_pid(p)) == NULL)
-  return;
+  if ((b = find_bee_by_pid(p)) == NULL) return;
   
-  printf("Bee found: %d\n", (int)p);
   b->set_status(BEE_STOPPED);
   kill(p, SIGTERM);
 }
@@ -84,8 +81,7 @@ void terminate_all()
 {
   for (MapChildrenT::iterator it=children.begin(), end=children.end(); it != end; ++it) {
     pid_t p = it->first;
-    Bee b = it->second;
-    kill(p, SIGTERM);
+    terminate_by_pid(p);
   }
 }
 
@@ -113,15 +109,18 @@ void start(int argc, const char **argv, const char *env[])
   p.set_micro(2);
 
   pid = p.monitored_start(argc, argv, (char **) env);
-
-  printf("monitored_start pid: %d\n", (int)pid);
-  Bee bee(argv[0], pid);
-  children[pid] = bee;
+  
+  if (pid > 0) {
+    Bee bee(argv[0], pid);
+    children[pid] = bee;
+  }
 }
 
 int main (int argc, const char *argv[])
 {  
   const char* env[] = { "NAME=bob", NULL };
+  
+  process_pid = (int)getpid();
   
   // drop_into_shell();
   char cmd_buf[512] = {0};
@@ -142,7 +141,7 @@ int main (int argc, const char *argv[])
     
     argify(cmd_buf, &command_argc, &command_argv);
     
-    for (int i = 0; i < command_argc; i++) printf("command_argv[%d] = %s\n", i, command_argv[i]);
+    // for (int i = 0; i < command_argc; i++) printf("command_argv[%d] = %s\n", i, command_argv[i]);
     
     if (command_argc <= 0) {
     } else {

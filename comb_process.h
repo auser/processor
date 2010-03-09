@@ -132,6 +132,7 @@ private:
   int setup_signal_handlers();
   int safe_fork();
   int write_to_pidfile();
+  int cleanup_exited();
 };
 
 #endif
