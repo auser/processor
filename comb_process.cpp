@@ -16,7 +16,7 @@
 #include "comb_process.h"
 
 extern int dbg;
-int gbl_child_pid;
+int gbl_child_pid, gbl_parent_pid;
 char *gbl_pidfile;
 callback_t gbl_callback;
 
@@ -28,8 +28,9 @@ void gotsignal(int sig)
   switch (sig) {
     case SIGTERM:
     case SIGINT:
-    if (gbl_callback != NULL) gbl_callback((int)gbl_child_pid);
+    if (gbl_callback != NULL) gbl_callback(sig, gbl_parent_pid);
     kill(gbl_child_pid, sig);
+    kill(0, SIGTERM); // Kill all children in our process group
     unlink(gbl_pidfile); // Cleanup the pidfile
     _exit(0);
     break;
@@ -59,6 +60,7 @@ void gotsigchild(int signal, siginfo_t* si, void* context)
   
   debug(dbg, 1, "CombProcess %d exited (sig=%d)\r\n", si->si_pid, signal);
   process_child_signal(si->si_pid);
+  if (gbl_callback != NULL) gbl_callback((int)si->si_pid, signal);
 }
 /***** Comb process *****/
 /**
@@ -101,13 +103,13 @@ int CombProcess::setup_signal_handlers()
 /**
 * Start the process
 **/
-pid_t CombProcess::monitored_start(int argc, char const *argv[], char **envp)
+pid_t CombProcess::monitored_start(int argc, char const **argv, char **envp)
 {
   set_input(argc, argv);
   set_env(envp);
   return monitored_start();
 }
-pid_t CombProcess::monitored_start(int argc, char const *argv[], char **envp, pid_t p_pid)
+pid_t CombProcess::monitored_start(int argc, char const **argv, char **envp, pid_t p_pid)
 {
   set_input(argc, argv);
   set_env(envp);
@@ -125,6 +127,7 @@ pid_t CombProcess::monitored_start()
 pid_t CombProcess::monitored_start(pid_t p_pid)
 {
   struct timespec *req;
+  setsid();
   m_parent_pid = p_pid;
   
   unsigned long tsecs = time(NULL);
@@ -138,12 +141,14 @@ pid_t CombProcess::monitored_start(pid_t p_pid)
   
   mkdir_p(dirname(m_pidfile));
   
-  m_process_pid = start_process(p_pid);
+  gbl_parent_pid = m_process_pid = start_process(p_pid);
+  
   // detach from the main process if 0 returned in child process
   if (fork()) {
-    return m_process_pid;
-    // exit(0); // non-zero child PID
+    return m_process_pid; // Let the process continue with whatever it needs to do
   }
+  
+  setpgid(0, p_pid);
   
   if (m_process_pid < 0) {
     FATAL_ERROR(stderr, "Failed to start the process\n");
@@ -157,9 +162,9 @@ pid_t CombProcess::monitored_start(pid_t p_pid)
       break;
       default:
       case ESRCH:
-        debug(m_dbg, 1, "CombProcess %s died\n", m_name);
+        debug(m_dbg, 1, "CombProcess (%d) %s died\n", (int)gbl_parent_pid, m_name);
         if (m_callback != NULL) {
-          m_callback((int)m_parent_pid);
+          m_callback((int)gbl_parent_pid, SIGINT);
           unlink(gbl_pidfile);
           exit(0);
         } else {
@@ -181,7 +186,7 @@ pid_t CombProcess::monitored_start(pid_t p_pid)
 int CombProcess::start_process(pid_t parent_pid)
 {
   pid_t child_pid = 0;
-  switch(child_pid = safe_fork(parent_pid)) {
+  switch(child_pid = safe_fork()) {
     case -1:
       fprintf(stderr, "Could not fork in process. Fatal error in CombProcess::start(): %s\n", ::strerror(errno));
       _exit(errno);
@@ -197,11 +202,12 @@ int CombProcess::start_process(pid_t parent_pid)
         }
       }
       
+      
       execve(m_argv[0], (char* const*)m_argv, (char* const*)m_cenv);
       
       // If execlp returns than there is some serious error !! And
       // executes the following lines below...
-      fprintf(stderr, "Error: Unable to start child process\n");
+      fprintf(stderr, "Error: Unable to start child process: %s\n", strerror(errno));
       child_pid = -2;
       exit(127);
       break;
@@ -229,7 +235,7 @@ int CombProcess::start_process(pid_t parent_pid)
 /**
 * This safe_fork forks processes and doesn't leave a zombie process
 **/
-pid_t CombProcess::safe_fork(pid_t parent_pid)
+pid_t CombProcess::safe_fork()
 {
   pid_t caller_pid = -1;
   pid_t child_pid = -1;

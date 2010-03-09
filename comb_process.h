@@ -3,6 +3,9 @@
 
 #include "babysitter_utils.h"
 
+#ifndef COMB_PROCESS_H
+#define COMB_PROCESS_H
+
 /*** Defines ***/
 #ifndef PID_ROOT
 #define PID_ROOT "/tmp/beehive/pid"
@@ -29,7 +32,7 @@ typedef enum _process_status_ {
   P_KILLED
 } process_status;
 
-typedef void (*callback_t) (pid_t p);
+typedef void (*callback_t) (pid_t p, int sig);
 
 // Definitions
 void  gotsignal(int sig);
@@ -127,6 +130,8 @@ public:
 private:
   int start_process(pid_t parent_pid);
   int setup_signal_handlers();
-  int safe_fork(pid_t parent_pid);  
+  int safe_fork();
   int write_to_pidfile();
 };
+
+#endif

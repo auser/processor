@@ -15,8 +15,8 @@ CXX=g++
 MAKEMAKE=mm
 MYCFLAGS=-DDEBUG_PRT -g3 -Wall
 
-SRCS=babysitter_utils.cpp comb_process.cpp test.cpp
-OBJS=babysitter_utils.o comb_process.o test.o
+SRCS=babysitter_utils.cpp comb_process.cpp bee.o test.cpp
+OBJS=babysitter_utils.o comb_process.o bee.o test.o
 EXE=test_proc
 
 # For generating makefile dependencies..
