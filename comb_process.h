@@ -128,11 +128,11 @@ public:
   pid_t monitored_start(int i, char const *argv[], char **envp, pid_t p_pid);
   
 private:
-  int start_process(pid_t parent_pid);
+  int start_process();
   int setup_signal_handlers();
   int safe_fork();
   int write_to_pidfile();
-  int cleanup_exited();
+  void cleanup_exited(int);
 };
 
 #endif

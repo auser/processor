@@ -20,6 +20,17 @@ int gbl_child_pid, gbl_parent_pid;
 char *gbl_pidfile;
 callback_t gbl_callback;
 
+void gbl_cleanup_exited(int sig, int exit_code)
+{	
+	debug(dbg, 1, "Killing in %d\n", (int)getpid());
+  if (gbl_callback != NULL) gbl_callback(gbl_child_pid, sig);
+  debug(dbg, 1, "unlinking pidfile: %s\n", gbl_pidfile);
+  unlink(gbl_pidfile);
+  kill(gbl_child_pid, sig);
+  debug(dbg, 1, "Getting the eff outta here: %d\n", (int)getpid());
+  exit(exit_code);
+}
+
 // Signal handlers
 // We've received a signal to process
 void gotsignal(int sig)
@@ -29,11 +40,7 @@ void gotsignal(int sig)
     case SIGTERM:
     case SIGINT:
     case SIGCHLD:
-    if (gbl_callback != NULL) gbl_callback(sig, gbl_parent_pid);
-    kill(gbl_child_pid, sig);
-    kill(0, sig); // Kill all children in our process group
-    unlink(gbl_pidfile); // Cleanup the pidfile
-    _exit(0);
+    gbl_cleanup_exited(sig, 0);
     break;
     case SIGHUP:
     _exit(0);
@@ -128,10 +135,8 @@ pid_t CombProcess::monitored_start()
 // Entry point
 pid_t CombProcess::monitored_start(pid_t p_pid)
 {
-  struct timespec *req;
-  setsid();
-  
-  m_parent_pid = p_pid;
+  struct timespec *req;  
+  gbl_parent_pid = m_parent_pid = p_pid;
   
   unsigned long tsecs = time(NULL);
   
@@ -144,15 +149,11 @@ pid_t CombProcess::monitored_start(pid_t p_pid)
   
   mkdir_p(dirname(m_pidfile));
   
-  gbl_parent_pid = m_process_pid = start_process(p_pid);
-  
+  gbl_child_pid = m_process_pid = start_process();
   // detach from the main process if 0 returned in child process
-  if (safe_fork()) {
-    return m_process_pid; // Let the process continue with whatever it needs to do
-  }
-  
+  if (fork()) return m_process_pid;
+    
   setup_signal_handlers();
-  setpgid(0, p_pid);
   
   if (m_process_pid < 0) {
     FATAL_ERROR(stderr, "Failed to start the process\n");
@@ -169,10 +170,9 @@ pid_t CombProcess::monitored_start(pid_t p_pid)
       case ESRCH:
         debug(m_dbg, 1, "CombProcess (%d) %s died\n", (int)gbl_parent_pid, m_name);
         if (m_callback != NULL) {
-          cleanup_exited();
           terminated = 1;
         } else {
-          m_process_pid = start_process(m_parent_pid);
+          m_process_pid = start_process();
           write_to_pidfile();
           sleep(INITIAL_PROCESS_WAIT); // Give the process a some time to start
         }
@@ -186,23 +186,20 @@ pid_t CombProcess::monitored_start(pid_t p_pid)
     nanosleep( (const struct timespec *)req, NULL);
   }
   debug(m_dbg, 1, "YAY, we (%d) has terminated\n", (int)getpid());
-  exit(0);
+  
+  int status = 0;
+  while (waitpid(gbl_child_pid, &status, 0) != 0) 
+    printf("still waiting...\n");
+  cleanup_exited(0);
+  return 0; // Should never get here
 }
 
-int CombProcess::cleanup_exited()
-{
-  debug(m_dbg, 1, "Killing in %d\n", (int)getpid());
-  m_callback((int)gbl_parent_pid, SIGCHLD);
-  debug(m_dbg, 1, "unlinking pidfile: %s\n", gbl_pidfile);
-  unlink(gbl_pidfile);
-  debug(m_dbg, 1, "Getting the eff outta here: %d\n", (int)getpid());
-  return 0;
-}
+void CombProcess::cleanup_exited(int exit_code){gbl_cleanup_exited(SIGINT, exit_code);}
 
-int CombProcess::start_process(pid_t parent_pid)
+int CombProcess::start_process()
 {
   pid_t child_pid = 0;
-  switch(child_pid = safe_fork()) {
+  switch(child_pid = fork()) {
     case -1:
       fprintf(stderr, "Could not fork in process. Fatal error in CombProcess::start(): %s\n", ::strerror(errno));
       _exit(errno);
@@ -224,8 +221,7 @@ int CombProcess::start_process(pid_t parent_pid)
       // executes the following lines below...
       fprintf(stderr, "Error: Unable to start child process: %s\n", strerror(errno));
       child_pid = -2;
-      cleanup_exited();
-      exit(127);
+      cleanup_exited(127);
       break;
     default:
       if (child_pid < 0) fprintf(stderr, "\nFatal Error: Problem while starting child process\n");
@@ -242,6 +238,7 @@ int CombProcess::start_process(pid_t parent_pid)
   }
   gbl_child_pid = child_pid;
   gbl_callback = m_callback;
+  write_to_pidfile();
   debug(m_dbg, 1, "Child pid %d\n", (int)child_pid);
   return child_pid;
 }
@@ -271,7 +268,7 @@ pid_t CombProcess::safe_fork()
   }
   
   if (caller_pid < 0 || waitpid(caller_pid, &status, 0) < 0) return -1;
-
+  
   if (WIFEXITED(status))
     if (WEXITSTATUS(status) == 0)
       return 1;

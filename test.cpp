@@ -19,8 +19,7 @@
 // Globals
 typedef std::map <pid_t, Bee>   MapChildrenT;
 MapChildrenT                    children;
-int                             dbg;
-char                            **command; // Ew
+int                             dbg = 4;
 struct sigaction                old_action;
 struct sigaction                sact, sterm;
 pid_t                           process_pid;
