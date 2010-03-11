@@ -28,6 +28,10 @@ The `CombProcess` is a c++ class that allows for callbacks and restarts. For ful
     
 This test program above will run the function that you specify in argv (as argv[1]). It will call the callback function above since it's specified. If it's not specified, then it will simply restart the program you specify.
 
+    s test/comb_test1.sh
+    s test/comb_test2.sh
+    
+    
 Author
 ------
 

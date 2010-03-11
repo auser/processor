@@ -13,11 +13,11 @@ CC=gcc
 CXX=g++
 
 MAKEMAKE=mm
-MYCFLAGS=-DDEBUG_PRT -g3 -Wall
+MYCFLAGS=-DGNU_READLINE -DDEBUG_PRT -g3 -Wall
 
 SRCS=babysitter_utils.cpp comb_process.cpp bee.o test.cpp
 OBJS=babysitter_utils.o comb_process.o bee.o test.o
-EXE=test_proc
+EXE=comb_test
 
 # For generating makefile dependencies..
 SHELL=/bin/sh
@@ -27,7 +27,7 @@ CFLAGS=$(MYCFLAGS) $(OS_DEFINES)
 
 ALLLDFLAGS= $(LDFLAGS)
 
-COMMONLIBS=-lstdc++ -lm
+COMMONLIBS=-lstdc++ -lm -lreadline
 LIBS=$(COMMONLIBS)
 
 all: $(MAKEMAKE) $(EXE)

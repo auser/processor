@@ -10,7 +10,6 @@
 #include <stdlib.h>     // for setenv()
 #include <time.h>       // for strftime()
 #include <libgen.h>     // for basename()
-
 #include <errno.h>
 
 #include "comb_process.h"
@@ -28,7 +27,6 @@ void gbl_cleanup_exited(int sig, int exit_code)
   unlink(gbl_pidfile);
   kill(gbl_child_pid, sig);
   debug(dbg, 1, "Getting the eff outta here: %d\n", (int)getpid());
-  exit(exit_code);
 }
 
 // Signal handlers
@@ -55,10 +53,6 @@ void gotsignal(int sig)
  * Wait for the pid to exit if it hasn't only if the and it's an interrupt process
  * make sure the process get the pid and signal to it
  **/
-int process_child_signal(pid_t pid)
-{
-  return 0;
-}
 /**
  * Got a signal from a child
  **/
@@ -68,8 +62,8 @@ void gotsigchild(int signal, siginfo_t* si, void* context)
   if (si->si_code == SI_USER || signal != SIGCHLD) return;
   
   debug(dbg, 1, "CombProcess %d exited (sig=%d)\r\n", si->si_pid, signal);
-  process_child_signal(si->si_pid);
-  if (gbl_callback != NULL) gbl_callback((int)si->si_pid, signal);
+  // gbl_cleanup_exited((int)si->si_pid, signal);
+  waitpid(0, NULL, WNOHANG);
 }
 /***** Comb process *****/
 /**
@@ -87,6 +81,7 @@ int CombProcess::setup_signal_handlers()
   sigaction(SIGQUIT,  &m_signore, NULL); // ignore Quit
   sigaction(SIGABRT,  &m_signore, NULL); // ignore ABRT
   sigaction(SIGTSTP,  &m_signore, NULL);
+  sigaction(SIGCHLD,  &m_signore, NULL);
   
   // Termination signals to handle with gotsignal
   m_sterm.sa_handler = gotsignal;
@@ -112,93 +107,71 @@ int CombProcess::setup_signal_handlers()
 /**
 * Start the process
 **/
-pid_t CombProcess::monitored_start(int argc, char const **argv, char **envp)
+void CombProcess::monitored_start(int argc, char const **argv, char **envp)
 {
   set_input(argc, argv);
   set_env(envp);
   return monitored_start();
 }
-pid_t CombProcess::monitored_start(int argc, char const **argv, char **envp, pid_t p_pid)
+void CombProcess::monitored_start(int argc, char const **argv, char **envp, const char *pidroot)
 {
   set_input(argc, argv);
   set_env(envp);
-  return monitored_start(p_pid);
+  return monitored_start(pidroot);
 }
 
-pid_t CombProcess::monitored_start()
-{
-  pid_t pid = getpid(); // get the CombProcess ID of procautostart
-  debug(m_dbg, 2, "Parent process: %d\n", (int) pid);
-  return monitored_start(pid);
-}
+void CombProcess::monitored_start(){return monitored_start(PID_ROOT);}
 
 // Entry point
-pid_t CombProcess::monitored_start(pid_t p_pid)
+void CombProcess::monitored_start(const char *pidroot)
 {
-  struct timespec *req;  
-  gbl_parent_pid = m_parent_pid = p_pid;
-  
-  unsigned long tsecs = time(NULL);
-  
-  if (m_pidfile[0] == 0) sprintf(m_pidfile, "%s/%d%lu.pid", PID_ROOT, (unsigned int)m_parent_pid, tsecs);
-  
-  // Copy to the global pid file for safe-keeping
-  gbl_pidfile = (char *)malloc(sizeof(char) * strlen(m_pidfile));
-  memset(gbl_pidfile, 0, sizeof(char) * strlen(m_pidfile)); 
-  strncpy(gbl_pidfile, m_pidfile, strlen(m_pidfile));
-  
-  mkdir_p(dirname(m_pidfile));
-  
-  gbl_child_pid = m_process_pid = start_process();
-  // detach from the main process if 0 returned in child process
-  if (fork()) return m_process_pid;
-    
-  setup_signal_handlers();
-  
-  if (m_process_pid < 0) {
-    FATAL_ERROR(stderr, "Failed to start the process\n");
-    exit(-1);
-  }
-  sleep(INITIAL_PROCESS_WAIT); // Give the process a some time to start
-  int terminated = 0;
-  
-  while (!terminated) {
-    switch (kill(m_process_pid, 0)) {
-      case 0:
-      break;
-      default:
-      case ESRCH:
-        debug(m_dbg, 1, "CombProcess (%d) %s died\n", (int)gbl_parent_pid, m_name);
-        if (m_callback != NULL) {
-          terminated = 1;
-        } else {
-          m_process_pid = start_process();
-          write_to_pidfile();
-          sleep(INITIAL_PROCESS_WAIT); // Give the process a some time to start
-        }
-      break;
+  pid_t pid;
+  // Detach from the main process please
+  pid = fork();
+  if (pid == 0) {
+    // We are in the child!
+    setsid();
+    // Save the pidroot
+    set_pidroot(pidroot);
+    // Save the callbacks
+    gbl_callback = m_callback;
+
+    // Ensure the pid root exists
+    mkdir_p(m_pidroot);
+
+    // Setup the signals for the process to follow
+    setup_signal_handlers();
+
+    // Start the process and wait for it to start up. 
+    start_process();
+
+    // Copy to the global pid file for safe-keeping
+    gbl_pidfile = (char *)malloc(sizeof(char) * strlen(m_pidfile.c_str()));
+    memset(gbl_pidfile, 0, sizeof(char) * strlen(m_pidfile.c_str())); 
+    strncpy(gbl_pidfile, m_pidfile.c_str(), strlen(m_pidfile.c_str()));
+
+    debug(m_dbg, 1, "Worker process started with a pid of: %d\n", m_process_pid);
+    // sleep(INITIAL_PROCESS_WAIT); // Give the process a some time to start
+
+    // Let's make sure it didn't die before we continue
+    if (m_process_pid < 0) {
+      fprintf(stderr, "[FATAL ERROR] Failed to start the process\n");
+      exit(-1);
     }
-    sleep(m_sec);
-    usleep(m_micro);
-    req = new struct timespec;
-    req->tv_sec = 0; // seconds
-    req->tv_nsec = m_nano; // nanoseconds
-    nanosleep( (const struct timespec *)req, NULL);
+
+    // And we're done!
+  } else {
+    while (waitpid(pid, NULL, 0) == -1 && errno != ECHILD);
+    exit(0);
   }
-  debug(m_dbg, 1, "YAY, we (%d) has terminated\n", (int)getpid());
   
-  int status = 0;
-  while (waitpid(gbl_child_pid, &status, 0) != 0) 
-    printf("still waiting...\n");
-  cleanup_exited(0);
-  return 0; // Should never get here
 }
 
 void CombProcess::cleanup_exited(int exit_code){gbl_cleanup_exited(SIGINT, exit_code);}
 
 int CombProcess::start_process()
 {
-  pid_t child_pid = 0;
+  pid_t child_pid = -1;
   switch(child_pid = fork()) {
     case -1:
       fprintf(stderr, "Could not fork in process. Fatal error in CombProcess::start(): %s\n", ::strerror(errno));
@@ -221,82 +194,47 @@ int CombProcess::start_process()
       // executes the following lines below...
       fprintf(stderr, "Error: Unable to start child process: %s\n", strerror(errno));
       child_pid = -2;
-      cleanup_exited(127);
       break;
     default:
       if (child_pid < 0) fprintf(stderr, "\nFatal Error: Problem while starting child process\n");
-      char buf[LIL_BUF];
-      FILE *pFile;
-      
-      if ((pFile = fopen(m_pidfile, "r")) != NULL) {
-        memset(buf, 0, LIL_BUF);
-        fgets(buf, LIL_BUF, pFile);
-        child_pid = atoi(buf);
-      }
-      fclose(pFile);
-      break;
+      m_process_pid = gbl_child_pid = child_pid;
+      m_process_pid = child_pid;      
+      write_to_pidfile();
   }
-  gbl_child_pid = child_pid;
-  gbl_callback = m_callback;
-  write_to_pidfile();
-  debug(m_dbg, 1, "Child pid %d\n", (int)child_pid);
+  debug(m_dbg, 1, "Child pid in start_process %d\n", (int)child_pid);
   return child_pid;
 }
 
 /***** Utils *****/
-/**
-* This safe_fork forks processes and doesn't leave a zombie process
-**/
-pid_t CombProcess::safe_fork()
-{
-  pid_t caller_pid = -1;
-  pid_t child_pid = -1;
-  int   status;
-  
-  if (!(caller_pid = fork())) {
-    switch (child_pid = fork()) {
-      case 0:
-        return child_pid;
-      case -1:
-        _exit(errno);
-      default:
-        m_process_pid = gbl_child_pid = child_pid;
-        write_to_pidfile();
-        // Leave
-        _exit(0);
-    }
-  }
-  
-  if (caller_pid < 0 || waitpid(caller_pid, &status, 0) < 0) return -1;
-  
-  if (WIFEXITED(status))
-    if (WEXITSTATUS(status) == 0)
-      return 1;
-    else
-      errno = WEXITSTATUS(status);
-  else
-    errno = EINTR;
-
-  return -1;
-}
 
 /**
 * Write pid to pid file
 **/
 int CombProcess::write_to_pidfile()
 {
-  char buf[20];
   // Buffer
-  memset(buf, 0, sizeof(buf));
-  snprintf(buf, sizeof(buf) - 1, "%u\n", (unsigned int) m_process_pid);
+  char buf[BIG_BUF];
+  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%s/%d.pid", m_pidroot, (unsigned int)m_process_pid);
+  m_pidfile = buf;
+  
+  // Copy to the global pid file for safe-keeping
+  gbl_pidfile = (char *)malloc(sizeof(char) * strlen(buf));
+  memset(gbl_pidfile, 0, sizeof(char) * strlen(buf)); 
+  strncpy(gbl_pidfile, buf, strlen(buf));
+  
+  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%d", (unsigned int)m_process_pid);
+  
+  printf("buf: %s\n", buf);
+  
   // Open file
-  debug(m_dbg, 2, "Opening pidfile: %s and writing %s to it\n", m_pidfile, buf);
-  FILE *pFile = fopen(m_pidfile, "w");
+  debug(m_dbg, 2, "Opening pidfile: %s and writing %s to it\n", m_pidfile.c_str(), buf);
+  FILE *pFile = fopen(m_pidfile.c_str(), "w");
   if ((ssize_t)fwrite(buf, 1, strlen(buf), pFile) != (ssize_t)strlen(buf)) {
-    fprintf(stderr, "Could not write to pid file (%s): %s\n", m_pidfile, strerror(errno));
+    fprintf(stderr, "Could not write to pid file (%s): %s\n", m_pidfile.c_str(), strerror(errno));
     fclose(pFile);
     _exit(-1);
   }
   fclose(pFile);
+  debug(m_dbg, 2, "Closed pidfile: %s and wrote %s to it\n", m_pidfile.c_str(), buf);
   return 0;
 }

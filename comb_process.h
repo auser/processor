@@ -2,6 +2,7 @@
 #include <string>   // STL string
 
 #include "babysitter_utils.h"
+#include "bee.h"
 
 #ifndef COMB_PROCESS_H
 #define COMB_PROCESS_H
@@ -47,7 +48,8 @@ private:
   pid_t           m_parent_pid;                       // The parent pid
   char*           m_name;                             // The name of the process
   process_status  m_status;                           // Status of the process
-  char            m_pidfile[LIL_BUF];                 // Pidfile name
+  char            m_pidroot[LIL_BUF];                 // The directory where the pid should be stored
+  std::string     m_pidfile;                          // Pidfile name
   char            m_cd[BIG_BUF];                      // Working directory
   char            m_input[BIG_BUF];                   // Input line
   int             m_argc;                             // Number of arguments
@@ -65,15 +67,12 @@ public:
     set_debug(dbg);
   }
   CombProcess() : m_callback(NULL),m_sec(5),m_micro(0),m_nano(0),m_process_pid(-1),m_name(NULL),m_status(P_WAITING), m_argc(0), m_cenv_c(0), m_dbg(0) {
-    memset(m_pidfile, 0, LIL_BUF);
+    m_pidfile = "";
     memset(m_cd, 0, BIG_BUF);
     memset(m_input, 0, BIG_BUF);
   }
   ~CombProcess() {
     debug(m_dbg, 2, "freeing CombProcess: %p\n", this);
-    if (m_pidfile[0] != (char)'\0') {
-      unlink(m_pidfile);
-    }
     if (m_name != NULL) free(m_name);
     if (m_argv != NULL) free(m_argv);
     if (m_cenv != NULL) free(m_cenv);
@@ -89,9 +88,8 @@ public:
     strncpy(m_cd, c, strlen(c));
   }
   void set_debug(int d)             {m_dbg = d;}
-  void set_pidfile(const char* c)   {
-    memset(m_pidfile, 0, LIL_BUF);
-    strncpy(m_pidfile, c, strlen(c));
+  void set_pidroot(const char* c)   {
+    memset(m_pidroot, 0, LIL_BUF); strncpy(m_pidroot, c, strlen(c));
   }
   void set_env(char **e)            {
     int total_len = 0, i = 0;
@@ -122,10 +120,10 @@ public:
     for (int j = 0; j < i; j++) debug(m_dbg, 2, "m_argv[%d] = %s\n", j, m_argv[j]);
   }
   
-  pid_t monitored_start();
-  pid_t monitored_start(pid_t p_pid);
-  pid_t monitored_start(int i, char const *argv[], char **envp);
-  pid_t monitored_start(int i, char const *argv[], char **envp, pid_t p_pid);
+  void monitored_start();
+  void monitored_start(const char *pidroot);
+  void monitored_start(int i, char const *argv[], char **envp);
+  void monitored_start(int i, char const *argv[], char **envp, const char *pidroot);
   
 private:
   int start_process();

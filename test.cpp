@@ -4,12 +4,20 @@
 #include <string>
 #include <map>
 
+/* Readline */
+#ifdef GNU_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#else
+#include <editline/readline.h>
+#endif /* GNU_READLINE */
+
 #include "babysitter_utils.h"
 #include "comb_process.h"
 #include "bee.h"
 
 #ifndef DEBUG_LEVEL
-#define DEBUG_LEVEL 1
+#define DEBUG_LEVEL 4
 #endif
 
 #ifndef PROMPT_STR
@@ -19,7 +27,7 @@
 // Globals
 typedef std::map <pid_t, Bee>   MapChildrenT;
 MapChildrenT                    children;
-int                             dbg = 4;
+int                             dbg = DEBUG_LEVEL;
 struct sigaction                old_action;
 struct sigaction                sact, sterm;
 pid_t                           process_pid;
@@ -100,19 +108,13 @@ void print_help()
 
 void start(int argc, const char **argv, const char *env[])
 {
-  pid_t pid;
   CombProcess p(DEBUG_LEVEL);
   // p.set_cd("/tmp/beehive/pid");
   p.set_callback(callback);
   p.set_secs(1);
   p.set_micro(2);
 
-  pid = p.monitored_start(argc, argv, (char **) env);
-  
-  if (pid > 0) {
-    Bee bee(argv[0], pid);
-    children[pid] = bee;
-  }
+  p.monitored_start(argc, argv, (char **) env);
 }
 
 int main (int argc, const char *argv[])
@@ -121,16 +123,22 @@ int main (int argc, const char *argv[])
   
   process_pid = (int)getpid();
   
-  // drop_into_shell();
-  char cmd_buf[512] = {0};
+  // drop_into_shell();  
+  char *cmd_buf;
+  char *expansion;
+  int result;
   
-  while (printf("%s ", PROMPT_STR)) {
-    if (fgets(cmd_buf, sizeof(cmd_buf), stdin) == NULL) {
-      printf("\n");
+  while (1) {
+    cmd_buf = readline(PROMPT_STR);
+    result = history_expand(cmd_buf, &expansion);
+    
+    if (!strncmp(cmd_buf, "", sizeof(cmd_buf))) {
       continue;
     }
-
-    cmd_buf[ strlen(cmd_buf) - 1 ] = '\0';
+    if (result < 0 || result == 2) fprintf(stderr, "%s\n", expansion);
+    else { add_history(expansion); }
+    
+    cmd_buf[ strlen(cmd_buf) ] = '\0';
 
     if ( !strncmp(cmd_buf, "quit", 4) || !strncmp(cmd_buf, "exit", 4) ) break; // Get the hell outta here
     
