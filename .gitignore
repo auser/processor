@@ -1,8 +1,8 @@
-c/Makefile
 *.o
 *.log
 c/test_suite
 .deps
 .DS_Store
-priv/
 VERSION
+mm
+bin/comb_test

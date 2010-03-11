@@ -4,7 +4,7 @@
 struct list_node {
   struct list_node * next;
   struct list_node * prev;
-  void * data;
+  size_t count;
 } list_node;
 
 #define LIST_INIT(el) struct list_node el = {&el, &el, NULL }

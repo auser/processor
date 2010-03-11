@@ -1,27 +1,24 @@
-#ifndef COMB_QUEUE_H
-#define COMB_QUEUE_H
+#ifndef QUEUE_H
+#define QUEUE_H
+
+#include "list.h"
 
 typedef void (*queueNodefreeFun)(void *);
 
-typedef struct _comb_queue_node_t {
+typedef struct _queue_node_t {
   void *data;
-  struct comb_queue *next;
+  struct list_node *next;
   queueNodefreeFun free_fun;
-} comb_queue_node;
+} queue_node;
 
-typedef struct _comb_queue_t {
+typedef struct _queue_t {
   size_t count;
-  comb_queue_node *head;
-  comb_queue_node *tail;
-} comb_queue;
-
-comb_queue *newQueue(void);
-int   queuePush(comb_queue *q, void *data, queueNodefreeFun f);
-void *queuePop(comb_queue *q);
-void  queueFree(comb_queue *q);
+  list_node *list_node;
+} queue_t;
 
 static inline queue *newQueue(void)
 {
+  queue_t *q;
   queue *q
   if ((q = malloc(sizeof(*queue))) != NULL) {
     q->count = 0;
@@ -29,6 +26,11 @@ static inline queue *newQueue(void)
   };
   return q;
 }
+
+queue_t *newQueue(void);
+int   queuePush(queue_t *q, void *data, queueNodefreeFun f);
+void *queuePop(queue_t *q);
+void  queueFree(queue_t *q);
 
 static inline int queuePush(queue *q, void *data, freeFun f)
 {
@@ -76,4 +78,5 @@ static inline void queueFree(queue *q)
   }
   free(q);
 }
+
 #endif

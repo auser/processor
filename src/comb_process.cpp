@@ -145,6 +145,7 @@ void CombProcess::monitored_start(const char *pidroot)
     // Start the process and wait for it to start up. 
     start_process();
 
+    write_to_pidfile();
     // Copy to the global pid file for safe-keeping
     gbl_pidfile = (char *)malloc(sizeof(char) * strlen(m_pidfile.c_str()));
     memset(gbl_pidfile, 0, sizeof(char) * strlen(m_pidfile.c_str())); 
@@ -198,8 +199,6 @@ int CombProcess::start_process()
     default:
       if (child_pid < 0) fprintf(stderr, "\nFatal Error: Problem while starting child process\n");
       m_process_pid = gbl_child_pid = child_pid;
-      m_process_pid = child_pid;      
-      write_to_pidfile();
   }
   debug(m_dbg, 1, "Child pid in start_process %d\n", (int)child_pid);
   return child_pid;
