@@ -9,14 +9,14 @@
 CC=gcc
 CXX=g++
 
-MAKEMAKE=mm
+MAKEMAKE=src/mm
 MYCFLAGS=-DGNU_READLINE -DDEBUG_PRT -g3 -Wall
 
 SRCS=$(wildcard src/*.cpp)
 #// babysitter_utils.cpp comb_process.cpp bee.o test.cpp
 OBJS=$(patsubst %.cpp, %.o, $(SRCS))
 #//babysitter_utils.o comb_process.o bee.o test.o
-EXE=comb_test
+EXE=bin/comb_test
 
 # For generating makefile dependencies..
 SHELL=/bin/sh
@@ -33,22 +33,20 @@ all: $(MAKEMAKE) $(EXE)
 
 $(MAKEMAKE):
 	@(rm -f $(MAKEMAKE))
-	$(CXX) -M  $(INCLUDE) $(CPPFLAGS) *.cpp > $(MAKEMAKE)
+	$(CXX) -M  $(INCLUDE) $(CPPFLAGS) $(SRCS) > $(MAKEMAKE)
 
 $(EXE): $(OBJS) $(LIBRARY)
 	@echo "Creating a executable "
 	$(CC) -o $(EXE) $(OBJS) $(ALLLDFLAGS) $(LIBS)
 	
 .cpp.o: $(SRCS) $(HDR)
-	$(CXX) -c  $(INCLUDE) $(CPPFLAGS) $*.cpp
+	$(CXX) -c -o $*.o $(INCLUDE) $(CPPFLAGS) $*.cpp
 
 .c.o: $(SRCS) $(HDR)
 	$(CC) -c $(INCLUDE) $(CFLAGS) $*.c
 
 clean:
-	rm -f *.o
-	rm -f $(EXE)
-	rm -f $(MAKEMAKE)
+	rm -f *.o src/*.o $(EXE) $(MAKEMAKE)
 
 #%.d: %.c
 #       @echo "Generating the dependency file *.d from *.c"
