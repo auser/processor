@@ -36,9 +36,7 @@ typedef enum _process_status_ {
 typedef void (*callback_t) (pid_t p, int sig);
 
 // Definitions
-void  gotsignal(int sig);
-void  gotsigchild(int signal, siginfo_t* si, void* context);
-int   process_child_signal(pid_t pid);
+void  gotsignal(int signal, siginfo_t* si, void* context);
 
 class CombProcess {
 private:
@@ -131,6 +129,7 @@ private:
   int safe_fork();
   int write_to_pidfile();
   void cleanup_exited(int);
+  int process_is_dead_after_waiting(int sleep_time, int retries);
 };
 
 #endif

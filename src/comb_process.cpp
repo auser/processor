@@ -31,40 +31,23 @@ void gbl_cleanup_exited(int sig, int exit_code)
 
 // Signal handlers
 // We've received a signal to process
-void gotsignal(int sig)
+void gotsignal(int signal, siginfo_t* si, void* context)
 {
-  debug(dbg, 1, "got signal: %d\n", sig);
-  switch (sig) {
+  debug(dbg, 1, "got signal: %d (%d)\n", signal, (unsigned int)si->si_pid);
+  switch (signal) {
+    case SIGCHLD:
+      if (si->si_code == SI_USER || signal != SIGCHLD) return;
     case SIGTERM:
     case SIGINT:
-    case SIGCHLD:
-    gbl_cleanup_exited(sig, 0);
+    gbl_cleanup_exited(signal, 0);
     break;
     case SIGHUP:
-    _exit(0);
     default:
     break;
   }
-  _exit(0);
-}
-
-/**
- * We received a signal for the child pid process
- * Wait for the pid to exit if it hasn't only if the and it's an interrupt process
- * make sure the process get the pid and signal to it
- **/
-/**
- * Got a signal from a child
- **/
-void gotsigchild(int signal, siginfo_t* si, void* context)
-{
-  // If someone used kill() to send SIGCHLD ignore the event
-  if (si->si_code == SI_USER || signal != SIGCHLD) return;
-  
-  debug(dbg, 1, "CombProcess %d exited (sig=%d)\r\n", si->si_pid, signal);
-  // gbl_cleanup_exited((int)si->si_pid, signal);
   waitpid(0, NULL, WNOHANG);
 }
+
 /***** Comb process *****/
 /**
 * Handle the signals to this process
@@ -81,24 +64,17 @@ int CombProcess::setup_signal_handlers()
   sigaction(SIGQUIT,  &m_signore, NULL); // ignore Quit
   sigaction(SIGABRT,  &m_signore, NULL); // ignore ABRT
   sigaction(SIGTSTP,  &m_signore, NULL);
-  sigaction(SIGCHLD,  &m_signore, NULL);
   
-  // Termination signals to handle with gotsignal
-  m_sterm.sa_handler = gotsignal;
+  // SIGCHLD handler
+  m_sterm.sa_handler = NULL;
+  m_sterm.sa_sigaction = &gotsignal;
   sigemptyset(&m_sterm.sa_mask);
-  sigaddset(&m_sterm.sa_mask, SIGCHLD);
-  m_sterm.sa_flags = 0;
+  m_sterm.sa_flags = 0;//m_sterm.sa_flags = SA_SIGINFO | SA_RESTART | SA_NOCLDSTOP | SA_NODEFER;
   
   if (sigaction(SIGINT,  &m_sterm, NULL) < 0) fprintf(stderr, "Error setting INT action\n"); // interrupts
   if (sigaction(SIGTERM, &m_sterm, NULL) < 0) fprintf(stderr, "Error setting TERM handler\n"); // ignore TERM
   if (sigaction(SIGHUP,  &m_sterm, NULL) < 0) fprintf(stderr, "Error setting HUP handler\n"); // ignore hangups
-
-  // SIGCHLD handler
-  m_sact.sa_handler = NULL;
-  m_sact.sa_sigaction = &gotsigchild;
-  sigemptyset(&m_sact.sa_mask);
-  m_sact.sa_flags = SA_SIGINFO | SA_RESTART | SA_NOCLDSTOP | SA_NODEFER;
-  sigaction(SIGCHLD, &m_sact, NULL);
+  if (sigaction(SIGCHLD,  &m_sterm, NULL) < 0) fprintf(stderr, "Error setting HUP handler\n"); // ignore hangups
   
   debug(m_dbg, 2, "Set up signal handlers\n");
   return 0;
@@ -122,50 +98,51 @@ void CombProcess::monitored_start(int argc, char const **argv, char **envp, cons
 
 void CombProcess::monitored_start(){return monitored_start(PID_ROOT);}
 
+int CombProcess::process_is_dead_after_waiting(int sleep_time, int retries)
+{
+  if (retries < 1) return 1; // Not alive
+  int process_is_down = kill(m_process_pid, 0);
+  
+  if (!process_is_down)
+    return 0; // It IS alive
+    
+  usleep(sleep_time); // Wait for it to sleep a little while more
+  return process_is_dead_after_waiting(sleep_time, retries - 1);
+}
+
 // Entry point
 void CombProcess::monitored_start(const char *pidroot)
 {
-  pid_t pid;
-  // Detach from the main process please
-  pid = fork();
-  if (pid == 0) {
-    // We are in the child!
-    setsid();
-    // Save the pidroot
-    set_pidroot(pidroot);
-    // Save the callbacks
-    gbl_callback = m_callback;
+  setsid();
+  // Save the pidroot
+  set_pidroot(pidroot);
+  // Save the callbacks
+  gbl_callback = m_callback;
 
-    // Ensure the pid root exists
-    mkdir_p(m_pidroot);
+  // Ensure the pid root exists
+  mkdir_p(m_pidroot);
 
-    // Setup the signals for the process to follow
-    setup_signal_handlers();
+  // Setup the signals for the process to follow
+  setup_signal_handlers();
 
-    // Start the process and wait for it to start up. 
-    start_process();
-
-    write_to_pidfile();
-    // Copy to the global pid file for safe-keeping
-    gbl_pidfile = (char *)malloc(sizeof(char) * strlen(m_pidfile.c_str()));
-    memset(gbl_pidfile, 0, sizeof(char) * strlen(m_pidfile.c_str())); 
-    strncpy(gbl_pidfile, m_pidfile.c_str(), strlen(m_pidfile.c_str()));
-
-    debug(m_dbg, 1, "Worker process started with a pid of: %d\n", m_process_pid);
-    // sleep(INITIAL_PROCESS_WAIT); // Give the process a some time to start
-
-    // Let's make sure it didn't die before we continue
-    if (m_process_pid < 0) {
-      fprintf(stderr, "[FATAL ERROR] Failed to start the process\n");
-      exit(-1);
-    }
-
-    // And we're done!
-  } else {
-    while (waitpid(pid, NULL, 0) == -1 && errno != ECHILD);
-    exit(0);
+  // Start the process and wait for it to start up. 
+  start_process();
+  // Let's make sure it didn't die before we continue
+  if (m_process_pid < 0) {
+    fprintf(stderr, "[FATAL ERROR] Failed to start the process\n");
+    exit(-1);
   }
   
+  // Wait
+  sleep(INITIAL_PROCESS_WAIT);
+  if (process_is_dead_after_waiting(INITIAL_PROCESS_WAIT, 3)) return;
+  
+  write_to_pidfile();
+  // Copy to the global pid file for safe-keeping
+  gbl_pidfile = (char *)malloc(sizeof(char) * (m_pidfile.length()));
+  memset(gbl_pidfile, 0, sizeof(char) * m_pidfile.length()); 
+  strncpy(gbl_pidfile, m_pidfile.c_str(), m_pidfile.length());  
+  gbl_pidfile[m_pidfile.length()] = '\0';
 }
 
 void CombProcess::cleanup_exited(int exit_code){gbl_cleanup_exited(SIGINT, exit_code);}
@@ -194,7 +171,7 @@ int CombProcess::start_process()
       // If execlp returns than there is some serious error !! And
       // executes the following lines below...
       fprintf(stderr, "Error: Unable to start child process: %s\n", strerror(errno));
-      child_pid = -2;
+      exit(-1);
       break;
     default:
       if (child_pid < 0) fprintf(stderr, "\nFatal Error: Problem while starting child process\n");
