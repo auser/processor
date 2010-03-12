@@ -97,6 +97,8 @@ public:
       i++;
     }
     
+    m_cenv_c = i;
+    
     total_len = total_len * sizeof(char);
     
     if ( (m_cenv = (const char**) malloc( total_len )) == NULL ) {

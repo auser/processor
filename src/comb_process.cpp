@@ -122,9 +122,6 @@ void CombProcess::monitored_start(const char *pidroot)
   // Ensure the pid root exists
   mkdir_p(m_pidroot);
 
-  // Setup the signals for the process to follow
-  setup_signal_handlers();
-
   // Start the process and wait for it to start up. 
   start_process();
   // Let's make sure it didn't die before we continue
@@ -159,11 +156,25 @@ int CombProcess::start_process()
       // We are in the child process
       debug(m_dbg, 1, "Starting comb with the command: %s\n", m_argv[0]);
       
+      // Setup the signals for the process to follow
+      setup_signal_handlers();
+      
       // cd into the directory if there is one
       if (m_cd[0] != (char)'\0') {
         if (chdir(m_cd)) {
           perror("chdir");
         }
+      }
+      
+      // Protection against the "Bad Address"
+      m_argv[m_argc] = NULL;
+      m_cenv[m_cenv_c] = NULL;
+      
+      if (m_dbg > 1) {
+        printf("--- DEBUG ---\n");
+        printf("name: %s\nnumber of args: %d\nnumber of envs: %d\n", m_argv[0], m_argc, m_cenv_c);
+        for(int i = 0; i <= (int)m_argc; i++) printf("\tm_argv[%d] = %s\n", i, m_argv[i]);
+        for(int i = 0; i <= (int)m_cenv_c; i++) printf("\tm_cenv[%d] = %s\n", i, m_cenv[i]);
       }
       
       execve(m_argv[0], (char* const*)m_argv, (char* const*)m_cenv);

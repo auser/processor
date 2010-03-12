@@ -119,7 +119,7 @@ void start(int argc, const char **argv, const char *env[])
 
 int main (int argc, const char *argv[])
 {  
-  const char* env[] = { "NAME=bob", NULL };
+  const char* env[] = { "NAME=bob", "AREA=Arizona", NULL };
   
   process_pid = (int)getpid();
   
@@ -164,7 +164,7 @@ int main (int argc, const char *argv[])
           // For example: start ./comb_test.sh
           command_argv[command_argc] = 0; // NULL TERMINATE IT
           
-          start(command_argc-1, (const char**)command_argv, env);
+          start(command_argc, (const char**)command_argv, env);
         }
       } else if ( !strncmp(command_argv[0], "kill", 4) || !strncmp(command_argv[0], "k", 1)) {
         printf("kill\n");
