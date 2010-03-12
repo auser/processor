@@ -133,36 +133,54 @@ int CombProcess::process_is_dead_after_waiting(int sleep_time, int retries)
 // Entry point
 pid_t CombProcess::monitored_start(const char *pidroot)
 {
-  setsid();
-  // Save the pidroot
-  set_pidroot(pidroot);
-  // Save the callbacks
-  gbl_callback = m_callback;
-
-  // Ensure the pid root exists
-  mkdir_p(m_pidroot);
-
-  // Start the process and wait for it to start up. 
-  start_process();
-  // Let's make sure it didn't die before we continue
-  if (m_process_pid < 0) {
-    fprintf(stderr, "[FATAL ERROR] Failed to start the process\n");
+  pid_t pid, child_pid;
+  child_pid = fork();
+  if (child_pid < 0) {
+    perror("fork");
     exit(-1);
+  } else if (child_pid == 0) {
+    setsid();
+    // Save the pidroot
+    set_pidroot(pidroot);
+    // Save the callbacks
+    gbl_callback = m_callback;
+
+    // Ensure the pid root exists
+    mkdir_p(m_pidroot);
+
+    // Start the process and wait for it to start up. 
+    start_process();
+    // Let's make sure it didn't die before we continue
+    if (m_process_pid < 0) {
+      fprintf(stderr, "[FATAL ERROR] Failed to start the process\n");
+      exit(-1);
+    }
+
+    // Wait
+    if (process_is_dead_after_waiting(INITIAL_PROCESS_WAIT, 3)) {
+      return -1;
+    }
+
+    write_to_pidfile();
+    // Copy to the global pid file for safe-keeping
+    gbl_pidfile = (char *)malloc(sizeof(char) * (m_pidfile.length()));
+    memset(gbl_pidfile, 0, sizeof(char) * m_pidfile.length()); 
+    strncpy(gbl_pidfile, m_pidfile.c_str(), m_pidfile.length());  
+    gbl_pidfile[m_pidfile.length()] = '\0';
+
+    return m_process_pid;
+  } else {
+    int status;
+    while (1) {
+      pid = waitpid (child_pid, &status, WNOHANG);
+      if (pid < 0) {
+        perror("waitpid");
+        break;
+      }
+      if (pid == 0) break;
+    }
+    return m_process_pid;
   }
-  
-  // Wait
-  if (process_is_dead_after_waiting(INITIAL_PROCESS_WAIT, 3)) {
-    return -1;
-  }
-  
-  write_to_pidfile();
-  // Copy to the global pid file for safe-keeping
-  gbl_pidfile = (char *)malloc(sizeof(char) * (m_pidfile.length()));
-  memset(gbl_pidfile, 0, sizeof(char) * m_pidfile.length()); 
-  strncpy(gbl_pidfile, m_pidfile.c_str(), m_pidfile.length());  
-  gbl_pidfile[m_pidfile.length()] = '\0';
-  
-  return m_process_pid;
 }
 
 void CombProcess::cleanup_exited(int exit_code){gbl_cleanup_exited(SIGINT, exit_code);}
