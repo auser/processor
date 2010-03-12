@@ -33,19 +33,31 @@ void gbl_cleanup_exited(int sig, int exit_code)
 // We've received a signal to process
 void gotsignal(int signal, siginfo_t* si, void* context)
 {
+  printf("in gotsignal\n");
+  pid_t pid;
+  int status, serrno;
   debug(dbg, 1, "got signal: %d (%d)\n", signal, (unsigned int)si->si_pid);
   switch (signal) {
     case SIGCHLD:
       if (si->si_code == SI_USER || signal != SIGCHLD) return;
+      serrno = errno;
+      while (1) {
+        pid = waitpid (WAIT_ANY, &status, WNOHANG);
+        if (pid < 0) {
+          perror("waitpid");
+          break;
+        }
+        if (pid == 0) break;
+      }
+      errno = serrno;
     case SIGTERM:
     case SIGINT:
-    gbl_cleanup_exited(signal, 0);
+      gbl_cleanup_exited(signal, 0);
     break;
     case SIGHUP:
     default:
     break;
   }
-  waitpid(0, NULL, WNOHANG);
 }
 
 /***** Comb process *****/
@@ -69,13 +81,21 @@ int CombProcess::setup_signal_handlers()
   m_sterm.sa_handler = NULL;
   m_sterm.sa_sigaction = &gotsignal;
   sigemptyset(&m_sterm.sa_mask);
-  m_sterm.sa_flags = 0;//m_sterm.sa_flags = SA_SIGINFO | SA_RESTART | SA_NOCLDSTOP | SA_NODEFER;
+  // sigaddset(&m_sterm.sa_mask, SIGCHLD);
+  m_sterm.sa_flags = 0;
   
   if (sigaction(SIGINT,  &m_sterm, NULL) < 0) fprintf(stderr, "Error setting INT action\n"); // interrupts
   if (sigaction(SIGTERM, &m_sterm, NULL) < 0) fprintf(stderr, "Error setting TERM handler\n"); // ignore TERM
   if (sigaction(SIGHUP,  &m_sterm, NULL) < 0) fprintf(stderr, "Error setting HUP handler\n"); // ignore hangups
-  if (sigaction(SIGCHLD,  &m_sterm, NULL) < 0) fprintf(stderr, "Error setting HUP handler\n"); // ignore hangups
+  if (sigaction(SIGCHLD, &m_sterm, NULL) < 0) fprintf(stderr, "Error setting HUP handler\n"); // ignore hangups
   
+  // SIGCHLD handler
+  // m_sact.sa_handler = NULL;
+  // m_sact.sa_sigaction = &gotsignal;
+  // sigemptyset(&m_sact.sa_mask);
+  // m_sact.sa_flags = SA_SIGINFO | SA_RESTART | SA_NOCLDSTOP | SA_NODEFER;
+  // sigaction(SIGCHLD, &m_sact, NULL);
+    
   debug(m_dbg, 2, "Set up signal handlers\n");
   return 0;
 }
@@ -83,20 +103,20 @@ int CombProcess::setup_signal_handlers()
 /**
 * Start the process
 **/
-void CombProcess::monitored_start(int argc, char const **argv, char **envp)
+pid_t CombProcess::monitored_start(int argc, char const **argv, char **envp)
 {
   set_input(argc, argv);
   set_env(envp);
   return monitored_start();
 }
-void CombProcess::monitored_start(int argc, char const **argv, char **envp, const char *pidroot)
+pid_t CombProcess::monitored_start(int argc, char const **argv, char **envp, const char *pidroot)
 {
   set_input(argc, argv);
   set_env(envp);
   return monitored_start(pidroot);
 }
 
-void CombProcess::monitored_start(){return monitored_start(PID_ROOT);}
+pid_t CombProcess::monitored_start(){return monitored_start(PID_ROOT);}
 
 int CombProcess::process_is_dead_after_waiting(int sleep_time, int retries)
 {
@@ -111,7 +131,7 @@ int CombProcess::process_is_dead_after_waiting(int sleep_time, int retries)
 }
 
 // Entry point
-void CombProcess::monitored_start(const char *pidroot)
+pid_t CombProcess::monitored_start(const char *pidroot)
 {
   setsid();
   // Save the pidroot
@@ -131,8 +151,9 @@ void CombProcess::monitored_start(const char *pidroot)
   }
   
   // Wait
-  sleep(INITIAL_PROCESS_WAIT);
-  if (process_is_dead_after_waiting(INITIAL_PROCESS_WAIT, 3)) return;
+  if (process_is_dead_after_waiting(INITIAL_PROCESS_WAIT, 3)) {
+    return -1;
+  }
   
   write_to_pidfile();
   // Copy to the global pid file for safe-keeping
@@ -140,6 +161,8 @@ void CombProcess::monitored_start(const char *pidroot)
   memset(gbl_pidfile, 0, sizeof(char) * m_pidfile.length()); 
   strncpy(gbl_pidfile, m_pidfile.c_str(), m_pidfile.length());  
   gbl_pidfile[m_pidfile.length()] = '\0';
+  
+  return m_process_pid;
 }
 
 void CombProcess::cleanup_exited(int exit_code){gbl_cleanup_exited(SIGINT, exit_code);}
@@ -154,8 +177,6 @@ int CombProcess::start_process()
       break;
     case 0:
       // We are in the child process
-      debug(m_dbg, 1, "Starting comb with the command: %s\n", m_argv[0]);
-      
       // Setup the signals for the process to follow
       setup_signal_handlers();
       
@@ -177,6 +198,7 @@ int CombProcess::start_process()
         for(int i = 0; i <= (int)m_cenv_c; i++) printf("\tm_cenv[%d] = %s\n", i, m_cenv[i]);
       }
       
+      debug(m_dbg, 1, "Starting comb with the command: %s (in pid: %d)\n", m_argv[0], (int)getpid());
       execve(m_argv[0], (char* const*)m_argv, (char* const*)m_cenv);
       
       // If execlp returns than there is some serious error !! And

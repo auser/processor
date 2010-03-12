@@ -21,7 +21,7 @@
 #endif
 
 #ifndef PROMPT_STR
-#define PROMPT_STR "bs >"
+#define PROMPT_STR "bs$ "
 #endif
 
 // Globals
@@ -113,13 +113,15 @@ void start(int argc, const char **argv, const char *env[])
   p.set_callback(callback);
   p.set_secs(1);
   p.set_micro(2);
-
-  p.monitored_start(argc, argv, (char **) env);
+  
+  pid_t pid = p.monitored_start(argc, argv, (char **) env);
+  children[pid] = *p.bee();
+  waitpid(pid, (int *) 0, WNOHANG); 
 }
 
 int main (int argc, const char *argv[])
 {  
-  const char* env[] = { "NAME=bob", "AREA=Arizona", NULL };
+  const char* env[] = { "PLATFORM_HOST=beehive", NULL };
   
   process_pid = (int)getpid();
   

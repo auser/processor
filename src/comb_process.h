@@ -54,6 +54,7 @@ private:
   char**          m_argv;                             // A string list of the arguments
   const char**    m_cenv;                             // The string list of environment variables
   unsigned int    m_cenv_c;                           // The current count of the environment variables
+  Bee*            m_bee;                              // Used to pass back a bee
   
   // Internal
   struct sigaction m_sact, m_sterm, m_signore;
@@ -64,7 +65,7 @@ public:
     new (this) CombProcess;
     set_debug(dbg);
   }
-  CombProcess() : m_callback(NULL),m_sec(5),m_micro(0),m_nano(0),m_process_pid(-1),m_name(NULL),m_status(P_WAITING), m_argc(0), m_cenv_c(0), m_dbg(0) {
+  CombProcess() : m_callback(NULL),m_sec(5),m_micro(0),m_nano(0),m_process_pid(-1),m_name(NULL),m_status(P_WAITING), m_argc(0), m_cenv_c(0), m_bee(NULL),m_dbg(0) {
     m_pidfile = "";
     memset(m_cd, 0, BIG_BUF);
     memset(m_input, 0, BIG_BUF);
@@ -74,6 +75,13 @@ public:
     if (m_name != NULL) free(m_name);
     if (m_argv != NULL) free(m_argv);
     if (m_cenv != NULL) free(m_cenv);
+  }
+  
+  Bee *bee()  {
+    if (m_bee == NULL) {
+      m_bee = new Bee(m_argv[0], m_process_pid);
+    }
+    return m_bee;
   }
   
   void set_callback(callback_t f)   {m_callback = f;}
@@ -120,10 +128,10 @@ public:
     for (int j = 0; j < i; j++) debug(m_dbg, 2, "m_argv[%d] = %s\n", j, m_argv[j]);
   }
   
-  void monitored_start();
-  void monitored_start(const char *pidroot);
-  void monitored_start(int i, char const *argv[], char **envp);
-  void monitored_start(int i, char const *argv[], char **envp, const char *pidroot);
+  pid_t monitored_start();
+  pid_t monitored_start(const char *pidroot);
+  pid_t monitored_start(int i, char const *argv[], char **envp);
+  pid_t monitored_start(int i, char const *argv[], char **envp, const char *pidroot);
   
 private:
   int start_process();
