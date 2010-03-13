@@ -26,8 +26,9 @@ void gbl_cleanup_exited(int sig, int exit_code)
   debug(dbg, 1, "unlinking pidfile: %s\n", gbl_pidfile);
   unlink(gbl_pidfile);
   debug(dbg, 1, "sending %d to %d\n", (int)sig, (int)gbl_child_pid);
-  // kill(gbl_child_pid, sig);
+  kill(gbl_child_pid, sig);
   debug(dbg, 1, "Getting the eff outta here: %d\n", (int)getpid());
+  write_to_pidfile();
 }
 
 // Signal handlers
@@ -82,7 +83,7 @@ int CombProcess::setup_signal_handlers()
   m_sterm.sa_handler = NULL;
   m_sterm.sa_sigaction = &gotsignal;
   sigemptyset(&m_sterm.sa_mask);
-  // sigaddset(&m_sterm.sa_mask, SIGCHLD);
+  sigaddset(&m_sterm.sa_mask, SIGCHLD);
   m_sterm.sa_flags = 0;
   
   if (sigaction(SIGINT,  &m_sterm, NULL) < 0) fprintf(stderr, "Error setting INT action\n"); // interrupts
@@ -134,12 +135,11 @@ int CombProcess::process_is_dead_after_waiting(int sleep_time, int retries)
 // Entry point
 pid_t CombProcess::monitored_start(const char *pidroot)
 {
-  pid_t child_pid;
-  child_pid = fork();
-  if (child_pid < 0) {
+  gbl_child_pid = fork();
+  if (gbl_child_pid < 0) {
     perror("fork");
     exit(-1);
-  } else if (child_pid == 0) {
+  } else if (gbl_child_pid == 0) {
     setsid();
     // Save the pidroot
     set_pidroot(pidroot);
@@ -175,14 +175,14 @@ pid_t CombProcess::monitored_start(const char *pidroot)
     int status;
     pid_t pid;
     while (1) {
-      pid = waitpid (child_pid, &status, WNOHANG);
+      pid = waitpid (gbl_child_pid, &status, WNOHANG);
       if (pid < 0) {
         perror("waitpid");
         break;
       }
       if (pid == 0) break;
     }
-    return child_pid;
+    return gbl_child_pid;
   }
 }
 
@@ -244,7 +244,7 @@ int CombProcess::write_to_pidfile()
 {
   // Buffer
   char buf[BIG_BUF];
-  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%s/%d.pid", m_pidroot, (unsigned int)m_process_pid);
+  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%s/%d.pid", m_pidroot, (unsigned int)gbl_child_pid);
   m_pidfile = buf;
   
   // Copy to the global pid file for safe-keeping
@@ -252,7 +252,7 @@ int CombProcess::write_to_pidfile()
   memset(gbl_pidfile, 0, sizeof(char) * strlen(buf)); 
   strncpy(gbl_pidfile, buf, strlen(buf));
   
-  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%d", (unsigned int)m_process_pid);
+  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%d", (unsigned int)gbl_child_pid);
   
   printf("buf: %s\n", buf);
   
