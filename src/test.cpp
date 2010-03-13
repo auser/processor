@@ -112,6 +112,7 @@ void print_help()
 
 void start(int argc, const char **argv, const char *env[])
 {
+  for (int i = 0; i < argc; i++) printf("start arg[%d] = %s\n", i, argv[i]);
   CombProcess p(DEBUG_LEVEL);
   // p.set_cd("/tmp/beehive/pid");
   p.set_callback(callback);
@@ -158,16 +159,13 @@ int main (int argc, const char *argv[])
     
     // Gather args
     // char **command_argv = {0};
-    
-    int max_args = 128;
-    
-    char *command_argv[max_args];
+        
+    char **command_argv = {0};
     int command_argc = 0;
-    if ((command_argc = argify(cmd_buf, command_argv)) < 0) {
+    if ((command_argc = argify(cmd_buf, &command_argv)) < 0) {
       continue; // Ignore blanks
     }
     
-    printf("command_argv: %s\n", *command_argv);
     for (int i = 0; i < command_argc; i++) printf("command_argv[%d] = %s\n", i, command_argv[i]);
 
     if ( !strncmp(command_argv[0], "help", 4) ) {
@@ -178,8 +176,7 @@ int main (int argc, const char *argv[])
       if (command_argc < 2) {
         fprintf(stderr, "usage: start [command]\n");
       } else {
-        command_argc--;
-        shift(command_argv, 'l'); // Shift left
+        command_argv++;command_argc--;
         // For example: start ./comb_test.sh
         command_argv[command_argc] = 0; // NULL TERMINATE IT
         
@@ -191,7 +188,8 @@ int main (int argc, const char *argv[])
     } else {
       printf("Unknown command: %s\ntype 'help' for available commands\n", cmd_buf);
     }
-    free(command_argv);
+    for (int i = 0; i < command_argc; i++) free(command_argv[i]);
+    // free(command_argv);
     free(cmd_buf);
     free(line);
   }

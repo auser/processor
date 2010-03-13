@@ -7,64 +7,67 @@ extern "C" {
 #define MAXLINE 1024
 #endif
 
-static inline int argify(const char *line, char **argv)
+#define SKIP(p) while (*p && isspace (*p)) p++
+#define WANT(p) *p && !isspace (*p)
+ 
+/* Count the number of arguments. */
+ 
+static int count_args (const char * input)
 {
-  char *buf;
-  char *delim;
-  int argc;
-  
-  strcpy(buf, line);
-  
-  if (buf[ strlen(buf) - 1 ] == '\n') buf[strlen(buf)-1] = ' ';  // replace trailing '\n' with space
-  while (*buf && (*buf == ' ')) buf++; // strip off useless spaces at the front
-  
-  // Build the argv
-  argc = 0;
-  if (*buf == '\'') {
-    buf++;
-    delim = strchr(buf, '\'');
-	} else { delim = strchr(buf, ' '); }
-  
-  while (delim) {
-    argv[argc++] = buf;
-    *delim = '\0';
-    buf = delim + 1;
-    
-    printf("argv[%d] = %s\n", argc-1, argv[argc-1]);
-    
-    // Ignore spaces
-    while (*buf && (*buf == ' ')) buf++;
-
-    if (*buf == '\'') {
-      buf++;
-      delim = strchr(buf, '\'');
-		} else { delim = strchr(buf, ' '); }
-	}
-	
-	argv[argc] = NULL;
-  
-  if (argc == 0) return -1;
+  const char * p;
+  int argc = 0;
+  p = input;
+  while (*p) {
+    SKIP (p);
+    if (WANT (p)) {
+      argc++;
+      while (WANT (p)) p++;
+      }
+  }
   return argc;
 }
-
-static inline void shift_left(char *argv[])
+ 
+/* Copy each non-whitespace argument into its own allocated space. */
+ 
+static int copy_args (const char * input, int argc, char ** argv)
 {
   int i = 0;
-  while(argv[i] != NULL) 
-    argv[i] = argv[++i];
+  const char *p;
+  p = input;
+  while (*p) {
+    SKIP (p);
+    if (WANT (p)) {
+      const char * end = p;
+      char * copy;
+      while (WANT (end)) end++;
+      copy = argv[i] = (char *)malloc (end - p + 1);
+      if (! argv[i]) return -1;
+      while (WANT (p)) *copy++ = *p++;
+      *copy = 0;
+      i++;
+    }
+  }
+  if (i != argc) return -1;
+  return 0;
 }
+ 
+#undef SKIP
+#undef WANT
 
-static inline void shift_right(char *argv[])
+static inline int argify(const char *line, char ***argv_ptr)
 {
-  int i = 0;
-  while(argv[i++] != NULL) ;
-  for(int j = i; j > 0; j--) argv[j] = argv[j-1];
-}
+  int argc;
+  char ** argv;
 
-static inline void shift(char *argv[], char direction = 'l')
-{
-  if (direction == 'l') shift_left(argv);
-  else shift_right(argv);
+  argc = count_args (line);
+  if (argc == 0)
+      return -1;
+  argv = (char **)malloc (sizeof (char *) * argc);
+  if (! argv) return -1;
+  if (copy_args (line, argc, argv) < 0) return -1;
+  *argv_ptr = argv;
+  
+  return argc;
 }
 
 #ifdef __cplusplus
