@@ -25,7 +25,8 @@ void gbl_cleanup_exited(int sig, int exit_code)
   if (gbl_callback != NULL) gbl_callback(gbl_child_pid, sig);
   debug(dbg, 1, "unlinking pidfile: %s\n", gbl_pidfile);
   unlink(gbl_pidfile);
-  kill(gbl_child_pid, sig);
+  debug(dbg, 1, "sending %d to %d\n", (int)sig, (int)gbl_child_pid);
+  // kill(gbl_child_pid, sig);
   debug(dbg, 1, "Getting the eff outta here: %d\n", (int)getpid());
 }
 
@@ -133,7 +134,7 @@ int CombProcess::process_is_dead_after_waiting(int sleep_time, int retries)
 // Entry point
 pid_t CombProcess::monitored_start(const char *pidroot)
 {
-  pid_t pid, child_pid;
+  pid_t child_pid;
   child_pid = fork();
   if (child_pid < 0) {
     perror("fork");
@@ -167,10 +168,11 @@ pid_t CombProcess::monitored_start(const char *pidroot)
     memset(gbl_pidfile, 0, sizeof(char) * m_pidfile.length()); 
     strncpy(gbl_pidfile, m_pidfile.c_str(), m_pidfile.length());  
     gbl_pidfile[m_pidfile.length()] = '\0';
-
+    
     return m_process_pid;
   } else {
     int status;
+    pid_t pid;
     while (1) {
       pid = waitpid (child_pid, &status, WNOHANG);
       if (pid < 0) {

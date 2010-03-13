@@ -47,13 +47,3 @@ $(EXE): $(OBJS) $(LIBRARY)
 
 clean:
 	rm -f *.o src/*.o $(EXE) $(MAKEMAKE)
-
-#%.d: %.c
-#       @echo "Generating the dependency file *.d from *.c"
-#       $(SHELL) -ec '$(CC) -M $(CPPFLAGS) $< | sed '\''s/$*.o/& $@/g'\'' > $@'
-#%.d: %.cpp
-#       @echo "Generating the dependency file *.d from *.cpp"
-#       $(SHELL) -ec '$(CC) -M $(CPPFLAGS) $< | sed '\''s/$*.o/& $@/g'\'' > $@'
-
-#include $(SRCS:.cpp=.d)
-#include $(SRCS:.c=.d)

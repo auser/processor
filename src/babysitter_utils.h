@@ -13,7 +13,6 @@ int mkdir_p(std::string dir);
 int mkdir_p(std::string dir, uid_t user, gid_t group, mode_t mode);
 int rmdir_p(std::string dir);
 int babysitter_system_error(int err, const char *fmt, ...);
-int argify (const char * input, int * argc_ptr, char *** argv_ptr);
 
 int debug(const long int cur_level, int level, const char *fmt, ...);
 

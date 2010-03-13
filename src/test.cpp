@@ -15,6 +15,7 @@
 #include "babysitter_utils.h"
 #include "comb_process.h"
 #include "bee.h"
+#include "string_utils.h"
 
 #ifndef DEBUG_LEVEL
 #define DEBUG_LEVEL 4
@@ -77,11 +78,14 @@ void callback(pid_t pid, int sig)
 
 void terminate_by_pid(pid_t p)
 {
-  Bee *b;
-  if ((b = find_bee_by_pid(p)) == NULL) return;
-  
-  b->set_status(BEE_STOPPED);
-  kill(p, SIGTERM);
+  if (p > 0) {
+    Bee *b;
+    if ((b = find_bee_by_pid(p)) == NULL) return;
+
+    b->set_status(BEE_STOPPED);
+    printf("Here we'll send a SIGTERM to the pid: %d\n", p);
+    // kill(p, SIGTERM);
+  }
 }
 
 void terminate_all()
@@ -96,12 +100,12 @@ void print_help()
 {
   printf("Babysitter program help\n"
     "---Commands---\n"
-    "h | help             Show this screen\n"
-    "s | start <args>     Start a program\n"
-    "b | bundle <starts>  Bundle a bee\n"
-    "k | kill <args>      Stop a program\n"
-    "l | list <args>      List the programs\n"
-    "q | quit             Quit the daemon\n"
+    "help             Show this screen\n"
+    "start <args>     Start a program\n"
+    "bundle <starts>  Bundle a bee\n"
+    "kill <args>      Stop a program\n"
+    "list <args>      List the programs\n"
+    "quit             Quit the daemon\n"
     "\n"
   );
 }
@@ -119,6 +123,14 @@ void start(int argc, const char **argv, const char *env[])
   waitpid(pid, (int *) 0, WNOHANG); 
 }
 
+/**
+* eval the line
+**/
+void eval(char *line)
+{
+  
+}
+
 int main (int argc, const char *argv[])
 {  
   const char* env[] = { "PLATFORM_HOST=beehive", NULL };
@@ -126,55 +138,62 @@ int main (int argc, const char *argv[])
   process_pid = (int)getpid();
   
   // drop_into_shell();  
+  char *line;
   char *cmd_buf;
-  char *expansion;
   int result;
   
   while (1) {
-    cmd_buf = readline(PROMPT_STR);
-    result = history_expand(cmd_buf, &expansion);
-    
-    if (!strncmp(cmd_buf, "", sizeof(cmd_buf))) {
+    line = readline(PROMPT_STR);
+    result = history_expand(line, &cmd_buf);
+        
+    if (!strncmp(line, "", sizeof(line))) {
       continue;
     }
-    if (result < 0 || result == 2) fprintf(stderr, "%s\n", expansion);
-    else { add_history(expansion); }
+    if (result < 0 || result == 2) fprintf(stderr, "%s\n", cmd_buf);
+    else { add_history(cmd_buf); }
     
     cmd_buf[ strlen(cmd_buf) ] = '\0';
 
     if ( !strncmp(cmd_buf, "quit", 4) || !strncmp(cmd_buf, "exit", 4) ) break; // Get the hell outta here
     
     // Gather args
-    char **command_argv = {0};
+    // char **command_argv = {0};
+    
+    int max_args = 128;
+    
+    char *command_argv[max_args];
     int command_argc = 0;
-    
-    argify(cmd_buf, &command_argc, &command_argv);
-    
-    // for (int i = 0; i < command_argc; i++) printf("command_argv[%d] = %s\n", i, command_argv[i]);
-    
-    if (command_argc <= 0) {
-    } else {
-      if ( !strncmp(command_argv[0], "help", 4) || !strncmp(command_argv[0], "h", 1) ) {
-        print_help();
-      } else if ( !strncmp(command_argv[0], "list", 4) || !strncmp(command_argv[0], "l", 1) ) {
-        list_processes();
-      } else if ( !strncmp(command_argv[0], "start", 5) || !strncmp(command_argv[0], "s", 1) ) {
-        if (command_argc < 2) {
-          fprintf(stderr, "usage: start [command]\n");
-        } else {
-          command_argv++; command_argc--;
-          // For example: start ./comb_test.sh
-          command_argv[command_argc] = 0; // NULL TERMINATE IT
-          
-          start(command_argc, (const char**)command_argv, env);
-        }
-      } else if ( !strncmp(command_argv[0], "kill", 4) || !strncmp(command_argv[0], "k", 1)) {
-        printf("kill\n");
-        terminate_by_pid(atoi( command_argv[1]) );
-      } else {
-        printf("Unknown command: %s\ntype 'help' for available commands\n", cmd_buf);
-      }
+    if ((command_argc = argify(cmd_buf, command_argv)) < 0) {
+      continue; // Ignore blanks
     }
+    
+    printf("command_argv: %s\n", *command_argv);
+    for (int i = 0; i < command_argc; i++) printf("command_argv[%d] = %s\n", i, command_argv[i]);
+
+    if ( !strncmp(command_argv[0], "help", 4) ) {
+      print_help();
+    } else if ( !strncmp(command_argv[0], "list", 4) ) {
+      list_processes();
+    } else if ( !strncmp(command_argv[0], "start", 5) ) {
+      if (command_argc < 2) {
+        fprintf(stderr, "usage: start [command]\n");
+      } else {
+        command_argc--;
+        shift(command_argv, 'l'); // Shift left
+        // For example: start ./comb_test.sh
+        command_argv[command_argc] = 0; // NULL TERMINATE IT
+        
+        start(command_argc, (const char**)command_argv, env);
+      }
+    } else if ( !strncmp(command_argv[0], "kill", 4) ) {
+      printf("kill\n");
+      terminate_by_pid(atoi( command_argv[1]) );
+    } else {
+      printf("Unknown command: %s\ntype 'help' for available commands\n", cmd_buf);
+    }
+    free(command_argv);
+    free(cmd_buf);
+    free(line);
   }
   
   printf("Exiting... killing all processes...\n");
