@@ -72,6 +72,7 @@ public:
   }
   ~CombProcess() {
     debug(m_dbg, 2, "freeing CombProcess: %p\n", this);
+    if (m_pidfile != "") unlink(m_pidfile);
     if (m_name != NULL) free(m_name);
     if (m_argv != NULL) free(m_argv);
     if (m_cenv != NULL) free(m_cenv);

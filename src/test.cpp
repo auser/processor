@@ -121,7 +121,7 @@ void start(int argc, const char **argv, const char *env[])
   
   pid_t pid = p.monitored_start(argc, argv, (char **) env);
   children[pid] = *p.bee();
-  waitpid(pid, (int *) 0, WNOHANG); 
+  waitpid(pid, (int *) 0, 0); 
 }
 
 /**
@@ -188,8 +188,8 @@ int main (int argc, const char *argv[])
     } else {
       printf("Unknown command: %s\ntype 'help' for available commands\n", cmd_buf);
     }
+    
     for (int i = 0; i < command_argc; i++) free(command_argv[i]);
-    // free(command_argv);
     free(cmd_buf);
     free(line);
   }

@@ -169,8 +169,9 @@ pid_t CombProcess::monitored_start(const char *pidroot)
     strncpy(gbl_pidfile, m_pidfile.c_str(), m_pidfile.length());  
     gbl_pidfile[m_pidfile.length()] = '\0';
     
-    return m_process_pid;
+    return (int)getpid();
   } else {
+    printf("in parent waiting for the pid...\n");
     int status;
     pid_t pid;
     while (1) {
@@ -181,7 +182,7 @@ pid_t CombProcess::monitored_start(const char *pidroot)
       }
       if (pid == 0) break;
     }
-    return m_process_pid;
+    return child_pid;
   }
 }
 
