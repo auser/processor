@@ -28,14 +28,13 @@ void gbl_cleanup_exited(int sig, int exit_code)
   debug(dbg, 1, "sending %d to %d\n", (int)sig, (int)gbl_child_pid);
   kill(gbl_child_pid, sig);
   debug(dbg, 1, "Getting the eff outta here: %d\n", (int)getpid());
-  write_to_pidfile();
+  exit(0);
 }
 
 // Signal handlers
 // We've received a signal to process
 void gotsignal(int signal, siginfo_t* si, void* context)
 {
-  printf("in gotsignal\n");
   pid_t pid;
   int status, serrno;
   debug(dbg, 1, "got signal: %d (%d)\n", signal, (unsigned int)si->si_pid);
@@ -197,10 +196,7 @@ int CombProcess::start_process()
       _exit(errno);
       break;
     case 0:
-      // We are in the child process
-      // Setup the signals for the process to follow
-      setup_signal_handlers();
-      
+      // We are in the child process      
       // cd into the directory if there is one
       if (m_cd[0] != (char)'\0') {
         if (chdir(m_cd)) {
@@ -228,6 +224,8 @@ int CombProcess::start_process()
       exit(-1);
       break;
     default:
+      // Setup the signals for the process to follow
+      setup_signal_handlers();
       if (child_pid < 0) fprintf(stderr, "\nFatal Error: Problem while starting child process\n");
       m_process_pid = gbl_child_pid = child_pid;
   }
@@ -243,8 +241,10 @@ int CombProcess::start_process()
 int CombProcess::write_to_pidfile()
 {
   // Buffer
+  pid_t write_pid = (unsigned int)getpid();
+  
   char buf[BIG_BUF];
-  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%s/%d.pid", m_pidroot, (unsigned int)gbl_child_pid);
+  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%s/%d.pid", m_pidroot, write_pid);
   m_pidfile = buf;
   
   // Copy to the global pid file for safe-keeping
@@ -252,7 +252,7 @@ int CombProcess::write_to_pidfile()
   memset(gbl_pidfile, 0, sizeof(char) * strlen(buf)); 
   strncpy(gbl_pidfile, buf, strlen(buf));
   
-  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%d", (unsigned int)gbl_child_pid);
+  memset(buf, 0, BIG_BUF);snprintf(buf, BIG_BUF, "%d", (unsigned int)write_pid);
   
   printf("buf: %s\n", buf);
   
