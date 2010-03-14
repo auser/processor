@@ -84,7 +84,7 @@ void terminate_by_pid(pid_t p)
 
     b->set_status(BEE_STOPPED);
     printf("Here we'll send a SIGTERM to the pid: %d\n", p);
-    // kill(p, SIGTERM);
+    kill(p, SIGTERM);
   }
 }
 

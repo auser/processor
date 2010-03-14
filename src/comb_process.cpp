@@ -204,7 +204,7 @@ int CombProcess::start_process()
         }
       }
       
-      // Protection against the "Bad Address"
+      // Protection against the "Bad Address" error
       m_argv[m_argc] = NULL;
       m_cenv[m_cenv_c] = NULL;
       
@@ -228,7 +228,7 @@ int CombProcess::start_process()
       setup_signal_handlers();
       if (child_pid < 0) fprintf(stderr, "\nFatal Error: Problem while starting child process\n");
       m_process_pid = gbl_child_pid = child_pid;
-  }
+    }
   debug(m_dbg, 1, "Child pid in start_process %d\n", (int)child_pid);
   return child_pid;
 }
