@@ -119,9 +119,7 @@ void start(int argc, const char **argv, const char *env[])
   p.set_secs(1);
   p.set_micro(2);
   
-  pid_t pid = p.monitored_start(argc, argv, (char **) env);
-  children[pid] = *p.bee();
-  waitpid(pid, (int *) 0, 0); 
+  p.monitored_start(argc, argv, (char **) env);
 }
 
 /**
