@@ -481,7 +481,7 @@ int main (int argc, const char *argv[])
         //start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
         const char *cd = NULL;
         // start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
-        start_child(commandify(cmd_buf), cd, (char* const*)env, run_as_user, 0);
+        start_child(commandify(command_argc, (const char**)command_argv), cd, (char* const*)env, run_as_user, 0);
       }
     } else if ( !strncmp(command_argv[0], "kill", 4) ) {
       printf("kill... eventually\n");

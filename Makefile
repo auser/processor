@@ -46,4 +46,6 @@ $(EXE): $(OBJS) $(LIBRARY)
 	$(CC) -c $(INCLUDE) $(CFLAGS) $*.c
 
 clean:
-	rm -f *.o src/*.o $(EXE) $(MAKEMAKE)
+	rm -f *.o src/*.o $(EXE) $(MAKEMAKE) test/*.o build/*.o
+
+include Tests.makefile
