@@ -93,6 +93,7 @@ int process_child_signal(pid_t pid)
 
 void pending_signals(int sig) {
   pending_sigalarm_signal = 1;
+  alarm(0);
 }
 
 void gotsignal(int signal)
@@ -127,7 +128,8 @@ void callback(pid_t pid, int sig)
   printf("callback called %d - %i (in %d / %d)\n", pid, sig, (int)getpid(), process_pid);
 }
 
-pid_t start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
+pid_t start_child(int command_argc, const char** command_argv, const char *cd, const char** env, int user, int nice)
+// pid_t start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
 {
   pid_t pid = fork();
 
@@ -146,10 +148,17 @@ pid_t start_child(const char* cmd, const char* cd, char* const* env, int user, i
         return EXIT_FAILURE;
       }
       
-      if (execve((const char*)cmd[0], (char* const*)cmd, env) < 0) {
+      printf("command: %s\n", command_argv[0]);
+      
+      if (execve((const char*)command_argv[0], (char* const*)command_argv, (char* const*) env) < 0) {
         fperror("Cannot execute '%s'", cd);
         return EXIT_FAILURE;
       }
+      if (nice != INT_MAX && setpriority(PRIO_PROCESS, pid, nice) < 0) {
+        fperror("Cannot set priority of pid %d to %d", pid, nice);
+      }
+      printf("Child exited!\n");
+      exit(0);
     }
     default:
       // In parent process
@@ -178,7 +187,13 @@ int stop_child(CmdInfo& ci, int transId, time_t &now, bool notify)
     return 0;
   } else if (!strncmp(ci.kill_cmd(), "", 1)) {
     // This is the first attempt to kill this pid and kill command is provided.
-    ci.set_kill_cmd_pid(start_child(ci.kill_cmd(), NULL, NULL, INT_MAX, INT_MAX));
+    char **command_argv = {0};
+    int command_argc = 0;
+    if ((command_argc = argify(ci.kill_cmd(), &command_argv)) < 1) {
+      fperror("Uh oh!\n");
+      return 0;
+    }
+    ci.set_kill_cmd_pid(start_child(command_argc, (const char**)command_argv, NULL, NULL, INT_MAX, INT_MAX));
     if (ci.kill_cmd_pid() > 0) {
       transient_pids[ci.kill_cmd_pid()] = ci.cmd_pid();
       ptm = gmtime ( (const time_t*) ci.deadline() );
@@ -340,9 +355,14 @@ void check_pending()
   sigset_t  set;
   int info;
   int sig;
+  struct itimerval tval;
+  struct timeval interval = {0, 20000};
   sigemptyset(&set);
   if (sigpending(&set) == 0) {
-    alarm( 1 );
+    pending_sigalarm_signal = 0;
+    tval.it_interval = interval;
+    tval.it_value = interval;
+    setitimer(ITIMER_REAL, &tval, NULL);
     while (((sig = sigwait(&set, &info)) > 0 || errno == EINTR) && !pending_sigalarm_signal )
     switch (sig) {
       case SIGCHLD:   gotsignal(sig); break;
@@ -353,6 +373,7 @@ void check_pending()
       default:        break;
     }
   }
+  // Clear
   pending_sigalarm_signal = 0;
 }
 
@@ -427,8 +448,7 @@ int main (int argc, const char *argv[])
   process_pid = (int)getpid();
   
   // drop_into_shell();  
-  char *line;
-  static char *line_read = (char *)NULL;
+  static char *line = (char *)NULL;
   char *cmd_buf;
   int terminated = 0;
   
@@ -473,7 +493,7 @@ int main (int argc, const char *argv[])
         //start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
         const char *cd = NULL;
         // start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
-        start_child(commandify(command_argc, (const char**)command_argv), cd, (char* const*)env, run_as_user, 0);
+        start_child(command_argc, (const char**)command_argv, cd, (const char**)env, run_as_user, 0);
       }
     } else if ( !strncmp(command_argv[0], "kill", 4) ) {
       printf("kill... eventually\n");
