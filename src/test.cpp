@@ -9,12 +9,9 @@
 #include <pwd.h>        /* getpwdid */
 
 /* Readline */
-#ifdef GNU_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
-#else
-#include <libtecla.h>
-#endif /* GNU_READLINE */
+#include <readline/tilde.h>
 
 #include "babysitter_utils.h"
 #include "fs.h"
@@ -431,6 +428,7 @@ int main (int argc, const char *argv[])
   
   // drop_into_shell();  
   char *line;
+  static char *line_read = (char *)NULL;
   char *cmd_buf;
   int terminated = 0;
   
@@ -442,16 +440,12 @@ int main (int argc, const char *argv[])
     
     // Read the next command
     line = readline(PROMPT_STR);
-    if (!strncmp(line, "", sizeof(line))) {
-      continue;
-    }
-    
     int result;
     result = history_expand(line, &cmd_buf);
         
     if (result < 0 || result == 2) fprintf(stderr, "%s\n", cmd_buf);
     else { add_history(cmd_buf); }
-    
+
     cmd_buf[ strlen(cmd_buf) ] = '\0';
 
     if ( !strncmp(cmd_buf, "quit", 4) || !strncmp(cmd_buf, "exit", 4) ) break; // Get the hell outta here

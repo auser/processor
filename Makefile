@@ -4,7 +4,7 @@ CC=gcc
 CXX=g++
 
 MAKEMAKE=src/mm
-MYCFLAGS=-DGNU_READLINE -DDEBUG_PRT -g3 -Wall
+MYCFLAGS=-DGNU_READLINE -DDEBUG_PRT -g3 -Wall -Ibuild/readline/include
 
 SRCS=$(wildcard src/*.cpp)
 #// babysitter_utils.cpp comb_process.cpp bee.o test.cpp
@@ -20,7 +20,7 @@ CFLAGS=$(MYCFLAGS) $(OS_DEFINES)
 
 ALLLDFLAGS= $(LDFLAGS)
 
-COMMONLIBS=-lstdc++ -lm -lreadline
+COMMONLIBS=-Lbuild/readline/lib/ -lstdc++ -lm -lreadline -lhistory
 LIBS=$(COMMONLIBS)
 
 all: $(MAKEMAKE) $(EXE)
@@ -40,6 +40,9 @@ $(EXE): $(OBJS) $(LIBRARY)
 	$(CC) -c $(INCLUDE) $(CFLAGS) $*.c
 
 clean:
-	rm -f *.o src/*.o $(EXE) $(MAKEMAKE) test/*.o build/*.o run_tests
+	rm -rf *.o src/*.o $(EXE) $(MAKEMAKE) test/*.o run_tests
+
+clean_deps:
+	rm -rf  build/*
 
 include Tests.makefile

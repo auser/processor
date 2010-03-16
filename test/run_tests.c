@@ -11,7 +11,8 @@ int main(int argc, char* argv[]) {
   const UnitTest string_tests[] = {
     unit_test(count_args_assertions),
     unit_test(argify_assertions),
-    unit_test(commandify_assertions)
+    unit_test(commandify_assertions),
+    unit_test(chomp_assertions),
   };
   
   return run_tests(string_tests);

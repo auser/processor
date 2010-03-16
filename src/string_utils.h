@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <ctype.h>
 #include <string.h>
 
 #ifdef __cplusplus
@@ -99,6 +100,22 @@ static inline char* commandify(int argc, const char** argv)
 
 #undef SKIP
 #undef WANT
+
+char* chomp(char *string) {
+  char *s, *t, *res;
+  int len = strlen(string);
+  res = (char*)malloc(sizeof(char*) * len);
+  
+  res = strdup(string);
+  for (s = res; isspace (*s); s++) ;
+  
+  if (*s == 0) return (s);
+  
+  t = s + strlen (s) - 1;
+  while (t > s && isspace(*t)) t--;
+  *++t = '\0';
+  return s;
+}
 
 #ifdef __cplusplus
 }

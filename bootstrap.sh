@@ -3,9 +3,9 @@ CURL=$(which curl)
 PUSHD=$(which pushd)
 POPD=$(which popd)
 
-libtecla_version="1.6.1"
-libtecla_tar="libtecla-${libtecla_version}.tar.gz"
-libtecla_repos="http://www.astro.caltech.edu/~mcs/tecla/${libtecla_tar}"
+readline_version="6.1"
+readline_tar="readline-${readline_version}.tar.gz"
+readline_repos="ftp://ftp.cwru.edu/pub/bash/${readline_tar}"
 
 # Build cmockery
 cmockery_version="0.1.2"
@@ -45,19 +45,19 @@ else
   fi
 fi
 
-if [ -f "build/libtecla/lib/libtecla.a" ]; then
-    echo "libtecla built"
+if [ -f "build/readline/lib/readline.a" ]; then
+    echo "readline built"
 else
   pushd build
-  prefix=`pwd`/libtecla
-  $CURL -o $libtecla_tar $libtecla_repos
-  echo $libtecla_tar
-  tar -xzf $libtecla_tar
-  mv libtecla libtecla-${libtecla_version}
-  pushd libtecla-${libtecla_version}
+  prefix=`pwd`/readline
+  $CURL -o $readline_tar $readline_repos
+  echo $readline_tar
+  tar -xzf $readline_tar
+  mv readline readline-${readline_version}
+  pushd readline-${readline_version}
   ./configure --prefix=$prefix && make && make install
   popd
-  rm -rf libtecla-${libtecla_version}
+  rm -rf readline-${readline_version}
   popd
 fi
 

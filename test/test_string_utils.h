@@ -33,3 +33,10 @@ void commandify_assertions(void **state) {
   cmd = commandify(cargc, (const char**) cargv);
   assert_string_equal(cmd, "/bin/bash -c ls -l /var/babysitter");
 }
+
+void chomp_assertions(void **state) {
+  assert_string_equal(chomp("hello world     "), "hello world");
+  assert_string_equal(chomp(" hello world"), "hello world");
+  assert_string_equal(chomp(" hello world "), "hello world");
+  assert_string_equal(chomp("hello   world "), "hello   world");
+}
