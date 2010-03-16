@@ -70,6 +70,17 @@ static inline int argify(const char *line, char ***argv_ptr)
   return argc;
 }
 
+static inline const char* commandify(int argc, const char** argv)
+{
+  int i = 0, total;
+  char *cmd;
+  for (i = 0; i < argc; i++) total += strlen(argv[i]) + 1; // plus a space
+  
+  cmd = (char*)malloc( total + 1 );
+  strncpy(cmd, argv, total);
+  return &cmd;
+}
+
 #ifdef __cplusplus
 }
 #endif

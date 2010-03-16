@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <deque>
+#include <pwd.h>        /* getpwdid */
 
 /* Readline */
 #ifdef GNU_READLINE
@@ -64,6 +65,7 @@ pid_t                           process_pid;
 static bool                     signaled   = false;     // indicates that SIGCHLD was signaled
 static int                      terminated = 0;         // indicates that we got a SIGINT / SIGTERM event
 int                             pending_sigalarm_signal = 0;
+int                             run_as_user;
 
 int process_child_signal(pid_t pid)
 {
@@ -141,13 +143,13 @@ pid_t start_child(const char* cmd, const char* cd, char* const* env, int user, i
       //   fperror("Cannot set effective user to %d", user);
       //   return EXIT_FAILURE;
       // }
-      const char* const argv[] = { getenv("SHELL"), "-c", cmd, (char*)NULL };
+      // const char* const argv[] = { getenv("SHELL"), "-c", cmd, (char*)NULL };
       if (cd != NULL && cd[0] != '\0' && chdir(cd) < 0) {
         fperror("Cannot chdir to '%s'", cd);
         return EXIT_FAILURE;
       }
       
-      if (execve((const char*)argv[0], (char* const*)argv, env) < 0) {
+      if (execve((const char*)cmd[0], (char* const*)cmd, env) < 0) {
         fperror("Cannot execute '%s'", cd);
         return EXIT_FAILURE;
       }
@@ -313,10 +315,6 @@ void print_help()
   );
 }
 
-void start(int argc, const char **argv, const char *env[])
-{
-}
-
 void setup_signal_handlers()
 {
   sterm.sa_handler = gotsignal;
@@ -417,10 +415,16 @@ int check_children(int& isTerminated)
   return 0;
 }
 
+void setup_defaults()
+{	
+  run_as_user = getuid();
+}
+
 int main (int argc, const char *argv[])
-{ 
+{
   setup_signal_handlers();
-   
+  setup_defaults();
+  
   const char* env[] = { "PLATFORM_HOST=beehive", NULL };
   
   process_pid = (int)getpid();
@@ -433,13 +437,10 @@ int main (int argc, const char *argv[])
   
   while (!terminated) {
     
-    printf("terminated: %d\n", terminated);
     while (!terminated && (exited_children.size() > 0 || signaled)) check_children(terminated);
-    printf("Checking pending...\n");
     check_pending(); // Check for pending signals arrived while we were in the signal handler
     if (terminated) break;
     
-    printf("not terminated\n");
     // Read the next command
     line = readline(PROMPT_STR);
     result = history_expand(line, &cmd_buf);
@@ -477,8 +478,10 @@ int main (int argc, const char *argv[])
         command_argv++;command_argc--;
         // For example: start ./comb_test.sh
         command_argv[command_argc] = 0; // NULL TERMINATE IT
-        
-        start(command_argc, (const char**)command_argv, env);
+        //start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
+        const char *cd = NULL;
+        // start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
+        start_child(commandify(cmd_buf), cd, (char* const*)env, run_as_user, 0);
       }
     } else if ( !strncmp(command_argv[0], "kill", 4) ) {
       printf("kill... eventually\n");
