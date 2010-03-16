@@ -2,14 +2,22 @@
 #define PRINTF_H
 
 // Error out and die
-void xperror_and_die(int exit_code, const char *s, ...)
+static inline void fperror(const char *s,...)
 {
-	va_list p;
+  char buf[1024];
+  va_list p;
 
 	va_start(p, s);
 	/* Guard against "<error message>: Success" */
-	bb_verror_msg(s, p, errno ? strerror(errno) : NULL);
+	vsprintf(buf, s, p);
 	va_end(p);
+}
+
+void fperror_and_die(int exit_code, const char *s, ...)
+{
+  va_list p;
+	
+  fperror(s, p);
 	exit(exit_code);
 }
 

@@ -6,3 +6,5 @@ c/test_suite
 VERSION
 mm
 bin/comb_test
+build
+run_tests

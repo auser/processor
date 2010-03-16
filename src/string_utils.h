@@ -1,3 +1,10 @@
+#ifndef STRING_UTILS_
+#define STRING_UTILS_
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,9 +58,6 @@ static int copy_args (const char * input, int argc, char ** argv)
   return 0;
 }
  
-#undef SKIP
-#undef WANT
-
 static inline int argify(const char *line, char ***argv_ptr)
 {
   int argc;
@@ -70,6 +74,35 @@ static inline int argify(const char *line, char ***argv_ptr)
   return argc;
 }
 
+static inline char* commandify(int argc, const char** argv)
+{
+  int curr_pos = 0, i = 0, j = 0, total, len;
+  char *cmd;
+  
+  for (i = 0; i < argc; i++) total += strlen(argv[i]) + 1; // plus a space
+  
+  cmd = (char*)malloc( sizeof(char *) * total + 1 );
+  
+  while(j < argc) {
+    len = strlen(argv[j]) + 1;
+    for(i=0; i < len; i++) {
+      if (i == len-1)
+        cmd[curr_pos++] = ' ';
+      else
+        cmd[curr_pos++] = argv[j][i];
+    }
+    j++; 
+  }
+  cmd[curr_pos-1] = 0; // End it with a null-terminated character
+  return cmd;
+}
+
+#undef SKIP
+#undef WANT
+
 #ifdef __cplusplus
 }
+#endif
+
+
 #endif

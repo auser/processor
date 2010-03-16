@@ -47,3 +47,5 @@ $(EXE): $(OBJS) $(LIBRARY)
 
 clean:
 	rm -f *.o src/*.o $(EXE) $(MAKEMAKE)
+
+include Tests.makefile

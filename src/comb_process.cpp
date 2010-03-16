@@ -13,6 +13,7 @@
 #include <errno.h>
 
 #include "comb_process.h"
+#include "fs.h"
 
 extern int dbg;
 int gbl_child_pid, gbl_parent_pid;
