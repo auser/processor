@@ -5,6 +5,6 @@ c/test_suite
 .DS_Store
 VERSION
 mm
-bin/comb_test
 build
 run_tests
+bin/*
