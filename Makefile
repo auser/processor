@@ -24,13 +24,14 @@ COMMONLIBS=-Lbuild/readline/lib/ -lstdc++ -lm -lreadline -lhistory
 LIBS=$(COMMONLIBS)
 
 all: $(MAKEMAKE) $(EXES)
+	echo $(EXES)
 
 $(MAKEMAKE):
 	@(rm -f $(MAKEMAKE))
 	$(CXX) -M  $(INCLUDE) $(CPPFLAGS) $(SRCS) > $(MAKEMAKE)
 
-$(EXES): $(OBJS)
-	@echo "Creating a executable $($(subst src/,,$(subst .cpp,,$@)))"
+src/bin/*.cpp: $(OBJS)
+	@echo "Creating a executable $(subst src/,,$(subst .cpp,,$@))"
 	$(CXX) -c -o $*.o $(INCLUDE) $(CPPFLAGS) -I./src $@
 	$(CXX) -o $(subst src/,,$(subst .cpp,,$@)) $(subst .cpp,.o,$@) $(OBJS) $(ALLLDFLAGS) $(LIBS)
 
