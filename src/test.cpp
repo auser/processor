@@ -123,14 +123,11 @@ int main (int argc, const char *argv[])
       }
     } else if ( !strncmp(command_argv[0], "kill", 4) ) {
       if (command_argc < 2){
-        if (command_argc < 2) {
-          fprintf(stderr, "usage: kill [pid]\n");
-        } else {
-          pid_t kill_pid = atoi(command_argv[1]);
-          time_t now = time (NULL);
-          printf("can you kill_pid: %d\n", kill_pid);
-          stop_child(kill_pid, 0, now);
-        }
+        fprintf(stderr, "usage: kill [pid]\n");
+      } else {
+        pid_t kill_pid = atoi(command_argv[1]);
+        time_t now = time (NULL);
+        stop_child(kill_pid, 0, now);
       }
     } else {
       printf("Unknown command: %s\ntype 'help' for available commands\n", cmd_buf);
