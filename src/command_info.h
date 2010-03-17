@@ -1,3 +1,6 @@
+#ifndef COMMAND_INFO_H
+#define COMMAND_INFO_H
+
 #include <string.h>
 #include <string>
 #include <sys/time.h> // For timeval
@@ -38,3 +41,5 @@ struct CmdInfo {
   void set_sigterm(bool t)            {m_sigterm = t;}
   void set_kill_cmd_pid(pid_t p)      {m_kill_cmd_pid = p;}
 };
+
+#endif
