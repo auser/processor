@@ -13,7 +13,6 @@ int main(int argc, char* argv[]) {
     unit_test(argify_assertions),
     unit_test(commandify_assertions),
     unit_test(chomp_assertions),
-    unit_test(test_append_list),
   };
   
   return run_tests(string_tests);
