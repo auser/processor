@@ -103,11 +103,11 @@ pid_t start_child(int command_argc, const char** command_argv, const char *cd, c
       printf("command_argv[%d] = %s\n", i, command_argv[i]);
     
     if (execve((const char*)command_argv[0], (char* const*)command_argv, (char* const*) env) < 0) {
-      fperror("Cannot execute '%s'", cd);
-      return EXIT_FAILURE;
+      fperror("Cannot execute %s: %s\n", command_argv[0], strerror(errno));
+      exit(-1);
     }
     printf("Child exited!\n");
-    exit(-1);
+    exit(0);
   }
   default:
     // In parent process
@@ -225,7 +225,7 @@ void stop_child(pid_t pid, int transId, time_t &now)
     return;
   }
   // stop_child(CmdInfo& ci, int transId, time_t &now, bool notify)
-  stop_child(it->second, (int)transId, now, false);
+  stop_child(it->second, (int)transId, now);
 }
 
 
