@@ -35,6 +35,18 @@ struct CmdInfo {
   time_t      deadline()      const {return m_deadline;}
   bool        sigterm()       const {return m_sigterm;}
   bool        sigkill()       const {return m_sigkill;}
+  const char* status()        const {
+    if (m_sigterm)
+      return "terminated";
+    else if (m_sigkill)
+      return "killed";
+    else
+      if (kill(m_cmd_pid, 0) == 0) // process likely forked and is alive
+        return "running";
+      else
+        return "unknown";
+      
+  }
   
   void set_deadline(time_t t)         {m_deadline = t;}
   void set_sigkill(bool t)            {m_sigkill = t;}

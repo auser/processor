@@ -6,18 +6,11 @@
 #include <string>
 #include <map>
 #include <deque>
-#include <pwd.h>        /* getpwdid */
-
-/* Readline */
-#include <readline/readline.h>
-#include <readline/history.h>
-#include <readline/tilde.h>
 
 #include "babysitter_utils.h"
-#include "fs.h"
 #include "string_utils.h"
 #include "time.h"
-#include "printf.h"
+#include "printing_utils.h"
 
 #include "command_info.h"
 #include "process_manager.h"
@@ -26,20 +19,15 @@
 #define DEBUG_LEVEL 4
 #endif
 
-#ifndef PROMPT_STR
-#define PROMPT_STR "bs$ "
-#endif
-
 // Globals
 MapChildrenT                    children;
-std::deque<PidStatusT>          exited_children;  // deque of processed SIGCHLD events
+PidStatusDequeT                 exited_children;  // deque of processed SIGCHLD events
 MapKillPidT                     transient_pids;   // Map of pids of custom kill commands.
 int                             dbg = DEBUG_LEVEL;
 struct sigaction                old_action;
 struct sigaction                sact, sterm, spending;
-pid_t                           process_pid;
-static bool                     signaled   = false;     // indicates that SIGCHLD was signaled
-static int                      terminated = 0;         // indicates that we got a SIGINT / SIGTERM event
+bool                            signaled   = false;     // indicates that SIGCHLD was signaled
+int                             terminated = 0;         // indicates that we got a SIGINT / SIGTERM event
 int                             pending_sigalarm_signal = 0;
 int                             run_as_user;
 
@@ -231,7 +219,8 @@ void stop_child(pid_t pid, int transId, time_t &now)
     send_error_str(transId, false, "pid not alive (err: %d)", n);
     return;
   }
-  stop_child(it->second, transId, now);
+  // stop_child(CmdInfo& ci, int transId, time_t &now, bool notify)
+  stop_child(it->second, (int)transId, now, false);
 }
 
 
@@ -382,7 +371,7 @@ void setup_defaults()
   run_as_user = getuid();
 }
 
-int send_ok(int transId, pid_t pid = -1) {return 0;}
+int send_ok(int transId, pid_t pid) {return 0;}
 int send_pid_status_term(const PidStatusT& stat) {return 0;}
 int send_error_str(int transId, bool asAtom, const char* fmt, ...) {return 0;}
 int send_pid_list(int transId, const MapChildrenT& children) {return 0;}

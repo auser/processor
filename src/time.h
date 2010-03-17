@@ -1,5 +1,5 @@
-#ifndef _TIME_H
-#define _TIME_H
+#ifndef TIME_H_FILE
+#define TIME_H_FILE
 
 #include <time.h>
 #include <sys/time.h>
@@ -11,8 +11,6 @@
   };
 */
 
-static inline double timediff(time_t starttime, time_t finishtime) {
-  return difftime(starttime, finishtime);
-}
+double timediff(time_t starttime, time_t finishtime);
 
 #endif

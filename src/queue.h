@@ -16,7 +16,7 @@ typedef struct _queue_t {
   list_node *list_node;
 } queue_t;
 
-static inline queue *newQueue(void)
+queue *newQueue(void)
 {
   queue_t *q;
   queue *q
@@ -32,7 +32,7 @@ int   queuePush(queue_t *q, void *data, queueNodefreeFun f);
 void *queuePop(queue_t *q);
 void  queueFree(queue_t *q);
 
-static inline int queuePush(queue *q, void *data, freeFun f)
+int queuePush(queue *q, void *data, freeFun f)
 {
   queue_node *node;
   
@@ -51,7 +51,7 @@ static inline int queuePush(queue *q, void *data, freeFun f)
   }
   q->count+=1;
 }
-static inline void *queuePop(queue *q)
+void *queuePop(queue *q)
 {
   void *data;
   queue_node *next;
@@ -65,7 +65,7 @@ static inline void *queuePop(queue *q)
   if (q->head == NULL) q->tail = NULL;
   return data;
 }
-static inline void queueFree(queue *q)
+void queueFree(queue *q)
 {
   for (int i = q->count; i > 0; i++) {
     queue_node *node = q->head;

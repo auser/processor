@@ -18,21 +18,20 @@
 
 #include "babysitter_utils.h"
 #include "fs.h"
-#include "string_utils.h"
 #include "time.h"
-#include "printf.h"
+#include "printing_utils.h"
 
 #include "command_info.h"
 
 // Types
-typedef unsigned char byte;
-typedef int   exit_status_t;
-typedef pid_t kill_cmd_pid_t;
-typedef std::pair<pid_t, exit_status_t>     PidStatusT;
+typedef int                                 ExitStatusT;
+typedef pid_t                               KillCmdPidT;
+typedef std::pair<pid_t, ExitStatusT>       PidStatusT;
 typedef std::pair<pid_t, CmdInfo>           PidInfoT;
 typedef std::map <pid_t, CmdInfo>           MapChildrenT;
-typedef std::pair<kill_cmd_pid_t, pid_t>    KillPidStatusT;
-typedef std::map <kill_cmd_pid_t, pid_t>    MapKillPidT;
+typedef std::pair<KillCmdPidT, pid_t>       KillPidStatusT;
+typedef std::map <KillCmdPidT, pid_t>       MapKillPidT;
+typedef std::deque<PidStatusT>              PidStatusDequeT;
 
 // Signals
 int process_child_signal(pid_t pid);

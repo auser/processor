@@ -13,14 +13,47 @@
 #include <readline/history.h>
 #include <readline/tilde.h>
 
-#include "babysitter_utils.h"
-#include "fs.h"
 #include "string_utils.h"
-#include "time.h"
-#include "printf.h"
+#include "process_manager.h"
 
-#include "command_info.h"
+// Globals
 extern MapChildrenT children;
+extern PidStatusDequeT exited_children;
+extern int run_as_user;
+extern bool signaled;
+pid_t process_pid;
+
+#ifndef PROMPT_STR
+#define PROMPT_STR "bs$ "
+#endif
+
+void list_processes()
+{
+  printf("Pid\tName\tStatus\n-----------------------\n");
+  if (children.size() == 0) {
+    return;
+  }
+  for(MapChildrenT::iterator it=children.begin(); it != children.end(); it++) 
+    printf("%d\t%s\t%s\n",
+      it->first, 
+      it->second.cmd(),
+      it->second.status()
+    );
+}
+
+void print_help()
+{
+  printf("Babysitter program help\n"
+    "---Commands---\n"
+    "h | help             Show this screen\n"
+    "s | start <args>     Start a program\n"
+    "b | bundle <starts>  Bundle a bee\n"
+    "k | kill <args>      Stop a program\n"
+    "l | list <args>      List the programs\n"
+    "q | quit             Quit the daemon\n"
+    "\n"
+  );
+}
 
 int main (int argc, const char *argv[])
 {

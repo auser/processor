@@ -1,8 +1,9 @@
-#ifndef PRINTF_H
-#define PRINTF_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include "printing_utils.h"
 
-// Error out and die
-static inline void fperror(const char *s,...)
+void fperror(const char *s,...)
 {
   char buf[1024];
   va_list p;
@@ -20,5 +21,3 @@ void fperror_and_die(int exit_code, const char *s, ...)
   fperror(s, p);
 	exit(exit_code);
 }
-
-#endif
