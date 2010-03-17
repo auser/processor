@@ -31,6 +31,7 @@ bool                            signaled   = false;     // indicates that SIGCHL
 int                             terminated = 0;         // indicates that we got a SIGINT / SIGTERM event
 int                             pending_sigalarm_signal = 0;
 int                             run_as_user;
+pid_t                           process_pid;
 
 int process_child_signal(pid_t pid)
 {
@@ -380,4 +381,6 @@ int check_children(int& isTerminated)
 void setup_defaults()
 {	
   run_as_user = getuid();
+  process_pid = (int)getpid();
+  setup_signal_handlers();
 }

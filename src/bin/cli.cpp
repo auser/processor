@@ -21,7 +21,6 @@ extern MapChildrenT children;
 extern PidStatusDequeT exited_children;
 extern int run_as_user;
 extern bool signaled;
-pid_t process_pid;
 
 #ifndef PROMPT_STR
 #define PROMPT_STR "bs$ "
@@ -66,13 +65,10 @@ void print_help()
 
 int main (int argc, const char *argv[])
 {
-  setup_signal_handlers();
   setup_defaults();
   
   const char* env[] = { "PLATFORM_HOST=beehive", NULL };
   int env_c = 1;
-  
-  process_pid = (int)getpid();
   
   // drop_into_shell();  
   static char *line = (char *)NULL;
