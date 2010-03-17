@@ -118,7 +118,15 @@ int main (int argc, const char *argv[])
         CmdInfo ci(*command_argv, "", pid);
         children[pid] = ci;
       }
-    } else if ( !strncmp(command_argv[0], "kill", 4) ) {
+    } else if ( !strncmp(command_argv[0], "bundle", 5) ) {
+      printf("bundle here\n");
+    } else if ( !strncmp(command_argv[0], "mount", 5) ) {
+      printf("mount here\n");
+    } else if ( !strncmp(command_argv[0], "unmount", 7) ) {
+      printf("unmount here\n");
+    } else if ( !strncmp(command_argv[0], "cleanup", 7) ) {
+      printf("cleanup here\n");
+    } else if ( !strncmp(command_argv[0], "kill", 4) || !strncmp(command_argv[0], "stop", 4) ) {
       if (command_argc < 2){
         fprintf(stderr, "usage: kill [pid]\n");
       } else {

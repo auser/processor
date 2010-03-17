@@ -4,9 +4,9 @@ CC=gcc
 CXX=g++
 
 MAKEMAKE=src/mm
-MYCFLAGS=-DGNU_READLINE -DDEBUG_PRT -g3 -Wall -I./build/readline/include
+MYCFLAGS=-DGNU_READLINE -DDEBUG_PRT -g3 -Wall -I./build/readline/include -I./src/utils -I./src/erl
 
-SRCS=$(wildcard src/*.cpp)
+SRCS=$(wildcard src/*.cpp) $(wildcard src/utils/*.cpp) $(wildcard src/erl/*.cpp)
 #// babysitter_utils.cpp comb_process.cpp bee.o test.cpp
 OBJS=$(patsubst %.cpp, %.o, $(SRCS))
 #//babysitter_utils.o comb_process.o bee.o test.o
