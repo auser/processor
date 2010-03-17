@@ -27,6 +27,15 @@ pid_t process_pid;
 #define PROMPT_STR "bs$ "
 #endif
 
+int send_ok(int transId, pid_t pid) {
+  printf("send_ok!\n");
+  return 0;
+}
+
+int send_pid_status_term(const PidStatusT& stat) {return 0;}
+int send_error_str(int transId, bool asAtom, const char* fmt, ...) {return 0;}
+int send_pid_list(int transId, const MapChildrenT& children) {return 0;}
+
 void list_processes()
 {
   printf("Pid\tName\tStatus\n-----------------------\n");

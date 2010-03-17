@@ -41,10 +41,10 @@ void gotsigchild(int signal, siginfo_t* si, void* context);
 void setup_signal_handlers();
 
 // Returns
-int send_ok(int transId, pid_t pid = -1);
-int send_pid_status_term(const PidStatusT& stat);
-int send_error_str(int transId, bool asAtom, const char* fmt, ...);
-int send_pid_list(int transId, const MapChildrenT& children);
+extern int send_ok(int transId, pid_t pid = -1);
+extern int send_pid_status_term(const PidStatusT& stat);
+extern int send_error_str(int transId, bool asAtom, const char* fmt, ...);
+extern int send_pid_list(int transId, const MapChildrenT& children);
 
 // Management
 pid_t start_child(int command_argc, const char** command_argv, const char *cd, const char** env, int user, int nice);

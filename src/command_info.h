@@ -30,13 +30,13 @@ struct CmdInfo {
   }
   
   // Getters
-  const char* cmd()           const {return m_cmd.c_str();}
-  const char* kill_cmd()      const {return m_kill_cmd.c_str(); }
-  pid_t       cmd_pid()       const {return m_cmd_pid; }
-  pid_t       kill_cmd_pid()  const {return m_kill_cmd_pid;}
-  time_t      deadline()      const {return m_deadline;}
-  bool        sigterm()       const {return m_sigterm;}
-  bool        sigkill()       const {return m_sigkill;}
+  const char*   cmd()           const {return m_cmd.c_str();}
+  const char*   kill_cmd()      const {return m_kill_cmd.c_str(); }
+  pid_t         cmd_pid()       const {return m_cmd_pid; }
+  pid_t         kill_cmd_pid()  const {return m_kill_cmd_pid;}
+  time_t        deadline()      const {return m_deadline;}
+  bool          sigterm()       const {return m_sigterm;}
+  bool          sigkill()       const {return m_sigkill;}
   
   // Setters
   void set_deadline(time_t t)         {m_deadline = t;}
