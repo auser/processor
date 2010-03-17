@@ -70,6 +70,7 @@ int main (int argc, const char *argv[])
   setup_defaults();
   
   const char* env[] = { "PLATFORM_HOST=beehive", NULL };
+  int env_c = 1;
   
   process_pid = (int)getpid();
   
@@ -128,6 +129,16 @@ int main (int argc, const char *argv[])
         pid_t kill_pid = atoi(command_argv[1]);
         time_t now = time (NULL);
         stop_child(kill_pid, 0, now);
+      }
+    } else if ( !strncmp(command_argv[0], "env", 3)) {
+      if (command_argc < 2) {
+        printf("-- envs ---\n");
+        for(int i = 0; i < env_c; i++)
+          printf("\t%s\n", env[i]);
+      } else {
+        env[env_c++] = strdup(command_argv[1]);
+        env[env_c] = NULL;
+        printf("adding env: %s\n", command_argv[1]);
       }
     } else {
       printf("Unknown command: %s\ntype 'help' for available commands\n", cmd_buf);

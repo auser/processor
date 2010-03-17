@@ -29,8 +29,8 @@ int copy_args (const char * input, int argc, char ** argv)
   while (*p) {
     SKIP (p);
     if (WANT (p)) {
-      const char * end = p;
-      char * copy;
+      const char* end = p;
+      char* copy;
       while (WANT (end)) end++;
       copy = argv[i] = (char *)malloc (end - p + 1);
       if (! argv[i]) return -1;
