@@ -4,13 +4,13 @@ CC=gcc
 CXX=g++
 
 MAKEMAKE=src/mm
-MYCFLAGS=-DGNU_READLINE -DDEBUG_PRT -g3 -Wall -Ibuild/readline/include
+MYCFLAGS=-DGNU_READLINE -DDEBUG_PRT -g3 -Wall -I./build/readline/include
 
 SRCS=$(wildcard src/*.cpp)
 #// babysitter_utils.cpp comb_process.cpp bee.o test.cpp
 OBJS=$(patsubst %.cpp, %.o, $(SRCS))
 #//babysitter_utils.o comb_process.o bee.o test.o
-EXE=bin/comb_test
+EXES=$(wildcard src/bin/*.cpp)
 
 # For generating makefile dependencies..
 SHELL=/bin/sh
@@ -23,16 +23,17 @@ ALLLDFLAGS= $(LDFLAGS)
 COMMONLIBS=-Lbuild/readline/lib/ -lstdc++ -lm -lreadline -lhistory
 LIBS=$(COMMONLIBS)
 
-all: $(MAKEMAKE) $(EXE)
+all: $(MAKEMAKE) $(EXES)
 
 $(MAKEMAKE):
 	@(rm -f $(MAKEMAKE))
 	$(CXX) -M  $(INCLUDE) $(CPPFLAGS) $(SRCS) > $(MAKEMAKE)
 
-$(EXE): $(OBJS) $(LIBRARY)
-	@echo "Creating a executable "
-	$(CC) -o $(EXE) $(OBJS) $(ALLLDFLAGS) $(LIBS)
-	
+$(EXES): $(OBJS)
+	@echo "Creating a executable $($(subst src/,,$(subst .cpp,,$@)))"
+	$(CXX) -c -o $*.o $(INCLUDE) $(CPPFLAGS) -I./src $@
+	$(CXX) -o $(subst src/,,$(subst .cpp,,$@)) $(subst .cpp,.o,$@) $(OBJS) $(ALLLDFLAGS) $(LIBS)
+
 .cpp.o: $(SRCS) $(HDR)
 	$(CXX) -c -o $*.o $(INCLUDE) $(CPPFLAGS) $*.cpp
 

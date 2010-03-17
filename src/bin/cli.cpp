@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
-#include <sys/time.h>             // For timeval struct
 #include <time.h>                 // For time function
+#include <sys/time.h>             // For timeval struct
 #include <string>
 #include <map>
 #include <deque>

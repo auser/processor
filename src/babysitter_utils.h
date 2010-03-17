@@ -1,8 +1,9 @@
+#ifndef BABYSITTER_UTILS_H
+#define BABYSITTER_UTILS_H
+
 #include <string.h>
 #include <string>
 
-#ifndef BABYSITTER_UTILS_H
-#define BABYSITTER_UTILS_H
 
 //---
 // Functions

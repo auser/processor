@@ -8,6 +8,8 @@
 
 #include <string>
 
+#include "babysitter_utils.h"
+
 #ifndef BUF_SIZE
 #define BUF_SIZE 1024
 #endif
