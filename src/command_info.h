@@ -4,6 +4,7 @@
 #include <string.h>
 #include <string>
 #include <sys/time.h> // For timeval
+#include <signal.h>
 
 /// Contains run-time info of a child OS process.
 /// When a user provides a custom command to kill a process this 
@@ -28,6 +29,7 @@ struct CmdInfo {
     m_kill_cmd = _kill_cmd;
   }
   
+  // Getters
   const char* cmd()           const {return m_cmd.c_str();}
   const char* kill_cmd()      const {return m_kill_cmd.c_str(); }
   pid_t       cmd_pid()       const {return m_cmd_pid; }
@@ -35,23 +37,15 @@ struct CmdInfo {
   time_t      deadline()      const {return m_deadline;}
   bool        sigterm()       const {return m_sigterm;}
   bool        sigkill()       const {return m_sigkill;}
-  const char* status()        const {
-    if (m_sigterm)
-      return "terminated";
-    else if (m_sigkill)
-      return "killed";
-    else
-      if (kill(m_cmd_pid, 0) == 0) // process likely forked and is alive
-        return "running";
-      else
-        return "unknown";
-      
-  }
   
+  // Setters
   void set_deadline(time_t t)         {m_deadline = t;}
   void set_sigkill(bool t)            {m_sigkill = t;}
   void set_sigterm(bool t)            {m_sigterm = t;}
   void set_kill_cmd_pid(pid_t p)      {m_kill_cmd_pid = p;}
+  
+  // functions
+  const char* status();
 };
 
 #endif

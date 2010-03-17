@@ -127,6 +127,7 @@ int stop_child(CmdInfo& ci, int transId, time_t &now, bool notify)
   if (ci.kill_cmd_pid() > 0 || ci.sigterm()) {
     double diff = timediff(ci.deadline(), now);
       // There was already an attempt to kill it.
+    printf("have more than 5 seconds elapsed: %d and %d\n", ci.sigterm(), (int)diff);
     if (ci.sigterm() && diff < 0) {
       // More than 5 secs elapsed since the last kill attempt
       kill(ci.cmd_pid(), SIGKILL);
@@ -135,54 +136,53 @@ int stop_child(CmdInfo& ci, int transId, time_t &now, bool notify)
     }
     if (notify) send_ok(transId);
     return 0;
-  } else if (!strncmp(ci.kill_cmd(), "", 1)) {
-    // This is the first attempt to kill this pid and kill command is provided.
-    char **command_argv = {0};
-    int command_argc = 0;
-    if ((command_argc = argify(ci.kill_cmd(), &command_argv)) < 1) {
-      fperror("Uh oh!\n");
-      return 0;
-    }
-    ci.set_kill_cmd_pid(start_child(command_argc, (const char**)command_argv, NULL, NULL, INT_MAX, INT_MAX));
-    if (ci.kill_cmd_pid() > 0) {
-      transient_pids[ci.kill_cmd_pid()] = ci.cmd_pid();
-      ptm = gmtime ( (const time_t*) ci.deadline() );
-      ptm->tm_sec += 1;
-      ci.set_deadline(mktime(ptm));
-      if (notify) send_ok(transId);
-      return 0;
-    } else {
-      if (notify) send_error_str(transId, false, "bad kill command - using SIGTERM");
-      use_kill = true;
-      notify = false;
-    }
-  } else {
-    // This is the first attempt to kill this pid and no kill command is provided.
-    use_kill = true;
-  }
-    
-  if (use_kill) {
-    // Use SIGTERM / SIGKILL to nuke the pid
-    int n;
-    if (!ci.sigterm() && (n = kill_child(ci.cmd_pid(), SIGTERM, transId, notify)) == 0) {
-      ptm = gmtime ( (const time_t*) ci.deadline() );
-      ptm->tm_sec += 1;
-      ci.set_deadline(mktime(ptm));
-    } else if (!ci.sigkill() && (n = kill_child(ci.cmd_pid(), SIGKILL, 0, false)) == 0) {
-      ci.set_deadline(now);
-      ci.set_sigkill(true);
-    } else {
-      n = 0; // FIXME
-      // Failed to send SIGTERM & SIGKILL to the process - give up
-      ci.set_sigkill(true);
-      MapChildrenT::iterator it = children.find(ci.cmd_pid());
-      if (it != children.end()) 
-        children.erase(it);
-      }
-      ci.set_sigterm(true);
-      return n;
-  }
-  return 0;
+  } else if (strncmp(ci.kill_cmd(), "", 1) != 0) {
+   // This is the first attempt to kill this pid and kill command is provided.
+   char **command_argv = {0};
+   int command_argc = 0;
+   if ((command_argc = argify(ci.kill_cmd(), &command_argv)) < 1) {
+     fperror("Uh oh!\n");
+     return 0;
+   }
+   ci.set_kill_cmd_pid(start_child(command_argc, (const char**)command_argv, NULL, NULL, INT_MAX, INT_MAX));
+   if (ci.kill_cmd_pid() > 0) {
+     transient_pids[ci.kill_cmd_pid()] = ci.cmd_pid();
+     ptm = gmtime ( (const time_t*) ci.deadline() );
+     ptm->tm_sec += 1;
+     ci.set_deadline(mktime(ptm));
+     if (notify) send_ok(transId);
+     return 0;
+   } else {
+     if (notify) send_error_str(transId, false, "bad kill command - using SIGTERM");
+     use_kill = true;
+     notify = false;
+   }
+ } else {
+   // This is the first attempt to kill this pid and no kill command is provided.
+   use_kill = true;
+ }
+ if (use_kill) {
+   // Use SIGTERM / SIGKILL to nuke the pid
+   int n;
+   if (!ci.sigterm() && (n = kill_child(ci.cmd_pid(), SIGTERM, transId, notify)) == 0) {
+     ptm = gmtime ( (const time_t*) ci.deadline() );
+     ptm->tm_sec += 1;
+     ci.set_deadline(mktime(ptm));
+   } else if (!ci.sigkill() && (n = kill_child(ci.cmd_pid(), SIGKILL, 0, false)) == 0) {
+     ci.set_deadline(now);
+     ci.set_sigkill(true);
+   } else {
+     n = 0; // FIXME
+     // Failed to send SIGTERM & SIGKILL to the process - give up
+     ci.set_sigkill(true);
+     MapChildrenT::iterator it = children.find(ci.cmd_pid());
+     if (it != children.end()) 
+       children.erase(it);
+     }
+     ci.set_sigterm(true);
+     return n;
+ }
+ return 0;
 }
 
 int kill_child(pid_t pid, int signal, int transId, bool notify)
@@ -238,19 +238,23 @@ void terminate_all()
       int term = 0;
       check_children(term);
     }
-
-    for(MapChildrenT::iterator it=children.begin(), end=children.end(); it != end; ++it)
+    
+    // Attempt to kill the children
+    for(MapChildrenT::iterator it=children.begin(), end=children.end(); it != end; ++it) {
       stop_child((pid_t)it->first, 0, now_seconds);
-  
+    }
+    
+    // Definitely kill the transient_pids
     for(MapKillPidT::iterator it=transient_pids.begin(), end=transient_pids.end(); it != end; ++it) {
       kill(it->first, SIGKILL);
       transient_pids.erase(it);
     }
       
     if (children.size() == 0) break;
-  
+    
+    // give it a deadline to kill
     timeout_seconds = time (NULL);
-    struct tm* ptm = gmtime ( (const time_t*)timeout_seconds );
+    struct tm* ptm = gmtime ( &timeout_seconds );
     ptm->tm_sec += 1;
     deadline = mktime(ptm);
     
