@@ -79,7 +79,6 @@ void gotsigchild(int signal, siginfo_t* si, void* context)
 }
 
 pid_t start_child(int command_argc, const char** command_argv, const char *cd, const char** env, int user, int nice)
-// pid_t start_child(const char* cmd, const char* cd, char* const* env, int user, int nice)
 {
   pid_t pid = fork();
 
@@ -99,18 +98,23 @@ pid_t start_child(int command_argc, const char** command_argv, const char *cd, c
       return EXIT_FAILURE;
     }
     
+    printf("running command: %s\n", command_argv[0]);
+    for (int i = 0; i < command_argc; i++)
+      printf("command_argv[%d] = %s\n", i, command_argv[i]);
+    
     if (execve((const char*)command_argv[0], (char* const*)command_argv, (char* const*) env) < 0) {
       fperror("Cannot execute '%s'", cd);
       return EXIT_FAILURE;
     }
     printf("Child exited!\n");
-    exit(0);
+    exit(-1);
   }
   default:
     // In parent process
     if (nice != INT_MAX && setpriority(PRIO_PROCESS, pid, nice) < 0) {
       fperror("Cannot set priority of pid %d to %d", pid, nice);
     }
+    printf("pid: %d\n", pid);
     return pid;
   }
 }

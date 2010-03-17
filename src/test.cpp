@@ -93,8 +93,6 @@ int main (int argc, const char *argv[])
     if ((command_argc = argify(cmd_buf, &command_argv)) < 1) {
       continue; // Ignore blanks
     }
-    
-    for (int i = 0; i < command_argc; i++) printf("command_argv[%d] = %s\n", i, command_argv[i]);
 
     if ( !strncmp(command_argv[0], "help", 4) ) {
       print_help();
